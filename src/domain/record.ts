@@ -177,3 +177,20 @@ export function buildRecord(input: RecordInput): RecordResult {
 
   return { record, inference, candidates, warnings };
 }
+
+/**
+ * Level requirements worth sharing from a set of character snapshots (e.g. My Device saves).
+ * Skips anything this player already reported with the same value, so saving twice
+ * doesn't inflate the count. Reports from other players still add confidence.
+ */
+export function newLevelReqs(
+  states: CharacterState[], obs: { levelReqs: LevelRequirementObservation[] }, contributor: string, now: string, newId: () => string
+): LevelRequirementObservation[] {
+  const out: LevelRequirementObservation[] = [];
+  for (const s of states) {
+    if (s.required === null) continue;
+    const dup = [...obs.levelReqs, ...out].some((r) => r.level === s.level && r.expRequired === s.required && r.contributor === contributor);
+    if (!dup) out.push({ id: newId(), level: s.level, expRequired: s.required, contributor, createdAt: now, status: "observed", notes: "" });
+  }
+  return out;
+}

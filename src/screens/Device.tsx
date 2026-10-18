@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { CATALOG, CATEGORY_LABEL, defaultLevels, validateLevel } from "../domain/catalog";
 import type { Category, PlayerState } from "../domain/types";
+import { newId } from "../data/repository";
+import { newLevelReqs } from "../domain/record";
 import { useApp } from "../state";
 import { CharacterForm, draftFrom, parseDraft } from "../ui/CharacterForm";
 import { Card, Notice, Stepper } from "../ui/components";
@@ -8,7 +10,7 @@ import { Card, Notice, Stepper } from "../ui/components";
 const GROUPS: Category[] = ["core", "defensive", "offensive", "virus", "utility"];
 
 export default function Device({ onDone, first = false }: { onDone: () => void; first?: boolean }) {
-  const { player, savePlayer, user } = useApp();
+  const { player, savePlayer, user, observations, contribute } = useApp();
   const [char, setChar] = useState(draftFrom(player?.character));
   const [levels, setLevels] = useState<Record<string, number>>({ ...defaultLevels(), ...(player?.levels ?? {}) });
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,9 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
     setBusy(true);
     try {
       await savePlayer(next);
+      // Share this level's "XP needed" so the Data Table and level-up maths can use it.
+      const reqs = newLevelReqs([state], observations, user.username, next.updatedAt, newId);
+      if (reqs.length) await contribute({ prices: [], exp: [], levelReqs: reqs }).catch(() => { /* saving the device still worked */ });
       setError(null);
       if (first) onDone(); else setSaved(true);
     }

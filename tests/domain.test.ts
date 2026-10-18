@@ -8,7 +8,7 @@ import { needsEntry, nextPriceRows } from "../src/domain/nextPrices";
 import { defaultLevels } from "../src/domain/catalog";
 import { consensus, Knowledge } from "../src/domain/knowledge";
 import { missingKey, planPurchase, totalsWithEntered } from "../src/domain/purchase";
-import { buildRecord } from "../src/domain/record";
+import { buildRecord, newLevelReqs } from "../src/domain/record";
 import { computeCompleteness, summarize } from "../src/domain/completeness";
 import { toCsv } from "../src/domain/export";
 import { findConflicts, resolution } from "../src/domain/conflicts";
@@ -390,5 +390,19 @@ describe("Next-level prices and XP carry-over", () => {
 
   test("staying under the limit just adds XP", () => {
     assert.deepEqual(addXp({ level: 24, exp: 5870, required: 17993 }, 1, () => null), { level: 24, exp: 5871, required: 17993, levelsGained: 0 });
+  });
+});
+
+describe("Sharing XP needed from My Device", () => {
+  test("shares LVL 24 needs 17993 once, not again on the next save", () => {
+    const obs: ObservationSet = empty();
+    const first = newLevelReqs([{ level: 24, exp: 5870, required: 17993 }], obs, "hilltop", "t", id);
+    assert.equal(first.length, 1);
+    assert.equal(first[0].level, 24);
+    assert.equal(first[0].expRequired, 17993);
+    obs.levelReqs.push(...first);
+    assert.equal(newLevelReqs([{ level: 24, exp: 6000, required: 17993 }], obs, "hilltop", "t", id).length, 0);
+    assert.equal(newLevelReqs([{ level: 24, exp: 6000, required: 17993 }], obs, "bob", "t", id).length, 1); // another player adds confidence
+    assert.equal(new Knowledge(obs).levelRequirement(24).value, 17993);
   });
 });

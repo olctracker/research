@@ -98,7 +98,9 @@ export default function Purchase() {
     setBusy(true); setErr(null);
     try {
       await app.recordPurchase(result.record, nextState);
-      const picked = result.candidates.filter((c) => c.checked);
+      // Don't re-share a level's XP needed this player already reported with the same value.
+      const picked = result.candidates.filter((c) => c.checked && (c.type !== "level_req" ||
+        !app.observations.levelReqs.some((r) => r.level === c.data.level && r.expRequired === c.data.expRequired && r.contributor === app.user.username)));
       const contribution = {
         prices: [...extra, ...picked.flatMap((c) => (c.type === "price" ? [c.data] : []))],
         exp: picked.flatMap((c) => (c.type === "exp" ? [c.data] : [])),

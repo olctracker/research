@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { makeRepository } from "./data";
 import type { Contribution, Repository, SessionUser } from "./data/repository";
+import { newId } from "./data/repository";
+import { newLevelReqs } from "./domain/record";
 import { findConflicts, ConflictGroup } from "./domain/conflicts";
 import { Knowledge } from "./domain/knowledge";
 import type { ObservationSet, PlayerState, PurchaseRecord } from "./domain/types";
@@ -65,6 +67,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const enter = useCallback(async (repo: Repository, user: SessionUser) => {
     const d = await loadData(repo);
+    // Catch up: share this player's current level "XP needed" if they never have (older data, edits).
+    if (d.player?.setupComplete) {
+      const reqs = newLevelReqs([d.player.character], d.observations, user.username, new Date().toISOString(), newId);
+      if (reqs.length) {
+        try { await repo.contribute({ prices: [], exp: [], levelReqs: reqs }); d.observations = await repo.loadObservations(); }
+        catch { /* not critical */ }
+      }
+    }
     setPlayer(d.player); setPurchases(d.purchases); setObservations(d.observations);
     setBoot({ phase: "ready", repo, user });
   }, []);
