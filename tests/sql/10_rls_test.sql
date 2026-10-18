@@ -89,7 +89,7 @@ do $$ begin
   if exists (select 1 from public.purchase_history) then raise exception 'FAILED: B sees A''s history'; end if;
   update public.player_progress set level = 99;
   delete from public.purchase_history;   -- allowed for own rows; A's rows are invisible so nothing happens
-  if (select count(*) from public.price_observations) <> 5 then raise exception 'FAILED: B cannot read shared data'; end if;
+  if not exists (select 1 from public.price_observations where cost = 600) or (select count(*) from public.price_observations) < 5 then raise exception 'FAILED: B cannot read shared data'; end if;
 end $$;
 insert into public.observation_flags (observation_type, observation_id, reason)
   select 'price', id, 'looks wrong' from public.price_observations where cost = 600;

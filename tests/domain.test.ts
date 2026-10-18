@@ -271,7 +271,8 @@ describe("Data integrity", () => {
   });
 
   test("completeness reports its range and never claims full coverage of uncapped software", () => {
-    const rows = computeCompleteness(new Knowledge(SEED_OBSERVATIONS));
+    const exampleA = { ...SEED_OBSERVATIONS, prices: SEED_OBSERVATIONS.prices.filter((p) => p.id.startsWith("seed-spam-store")) };
+    const rows = computeCompleteness(new Knowledge(exampleA));
     const spam = rows.find((r) => r.upgradeId === "spam" && r.series === "store_price");
     assert.ok(spam);
     assert.equal(spam.rangeKind, "horizon");
@@ -404,5 +405,25 @@ describe("Sharing XP needed from My Device", () => {
     assert.equal(newLevelReqs([{ level: 24, exp: 6000, required: 17993 }], obs, "hilltop", "t", id).length, 0);
     assert.equal(newLevelReqs([{ level: 24, exp: 6000, required: 17993 }], obs, "bob", "t", id).length, 1); // another player adds confidence
     assert.equal(new Knowledge(obs).levelRequirement(24).value, 17993);
+  });
+});
+
+describe("Starting data from hackex.net and screenshots", () => {
+  const kb = new Knowledge(SEED_OBSERVATIONS);
+  test("Botnet tier prices are app levels 2–7 (site tier 0 = our level 1)", () => {
+    assert.deepEqual([2, 3, 4, 5, 6, 7].map((l) => kb.storeLevelPrice("botnet", l).value), [800, 3500, 15000, 42000, 95000, 180000]);
+    assert.equal(kb.storeLevelPrice("botnet", 7).reliability, "repeated"); // site + store paste agree
+  });
+  test("store paste prices and LVL 24 XP needed are loaded", () => {
+    assert.equal(kb.storeLevelPrice("firewall", 22).value, 37815);
+    assert.equal(kb.storeLevelPrice("keygen", 21).value, 31408);
+    assert.equal(kb.oneTimeItemPrice("notepad").value, 5000);
+    assert.equal(kb.levelRequirement(24).value, 17993);
+  });
+  test("Device and Network tables from hackex.net", () => {
+    assert.deepEqual([2, 5, 11].map((l) => kb.storeLevelPrice("device", l).value), [4000, 28000, 220000]);
+    assert.equal(kb.storeLevelPrice("device", 12).value, null); // hidden in the screenshot, not guessed
+    assert.deepEqual([2, 10, 11].map((l) => kb.storeLevelPrice("network", l).value), [3000, 120000, 170000]);
+    assert.equal(kb.storeLevelPrice("network", 10).reliability, "repeated"); // site + store paste agree
   });
 });

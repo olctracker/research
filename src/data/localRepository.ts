@@ -98,7 +98,12 @@ export class LocalRepository implements Repository {
     const k = K.purchases(this.me().userId);
     write(k, read<PurchaseRecord[]>(k, []).filter((r) => r.id !== id));
   }
-  async loadObservations(): Promise<ObservationSet> { return read<ObservationSet>(K.obs, SEED_OBSERVATIONS); }
+  async loadObservations(): Promise<ObservationSet> {
+    // Add any starting data this browser doesn't have yet (new seeds ship with app updates).
+    const o = read<ObservationSet>(K.obs, { prices: [], exp: [], levelReqs: [] });
+    const add = <T extends { id: string }>(have: T[], seed: T[]) => [...have, ...seed.filter((x) => !have.some((h) => h.id === x.id))];
+    return { prices: add(o.prices, SEED_OBSERVATIONS.prices), exp: add(o.exp, SEED_OBSERVATIONS.exp), levelReqs: add(o.levelReqs, SEED_OBSERVATIONS.levelReqs) };
+  }
   async contribute(c: Contribution) {
     const name = this.me().username;
     const o = await this.loadObservations();
