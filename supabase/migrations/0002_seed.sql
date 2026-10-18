@@ -77,7 +77,7 @@ insert into public.level_requirement_observations
   ('00000000-0000-4000-8000-000000000400', 24, 17993, null, 'hilltop', 'Game home screenshot, Oct 18 2026')
 on conflict (id) do nothing;
 
--- Device and Network prices from hackex.net (levels 2–11; Device level 12 not yet recorded).
+-- Device and Network prices from hackex.net (levels 2–11, plus Device 12 below).
 insert into public.price_observations
   (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, contributor_id, contributor_alias, notes) values
   ('00000000-0000-4000-8000-000000000500', 'device', 'store', 1, 2, 4000, 'per_level', 'final', null, 'hackex.net', 'hackex.net Devices table: Raider II'),
@@ -100,4 +100,10 @@ insert into public.price_observations
   ('00000000-0000-4000-8000-000000000517', 'network', 'store', 8, 9, 85000, 'per_level', 'final', null, 'hackex.net', 'hackex.net Network table: 10G Fiber'),
   ('00000000-0000-4000-8000-000000000518', 'network', 'store', 9, 10, 120000, 'per_level', 'final', null, 'hackex.net', 'hackex.net Network table: 10G Fiber+'),
   ('00000000-0000-4000-8000-000000000519', 'network', 'store', 10, 11, 170000, 'per_level', 'final', null, 'hackex.net', 'hackex.net Network table: Quantum Link')
+on conflict (id) do nothing;
+
+-- Device level 12 (Nova Ultra) from hackex.net.
+insert into public.price_observations
+  (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, contributor_id, contributor_alias, notes) values
+  ('00000000-0000-4000-8000-000000000600', 'device', 'store', 11, 12, 300000, 'per_level', 'final', null, 'hackex.net', 'hackex.net Devices table: Nova Ultra')
 on conflict (id) do nothing;

@@ -422,7 +422,7 @@ describe("Starting data from hackex.net and screenshots", () => {
   });
   test("Device and Network tables from hackex.net", () => {
     assert.deepEqual([2, 5, 11].map((l) => kb.storeLevelPrice("device", l).value), [4000, 28000, 220000]);
-    assert.equal(kb.storeLevelPrice("device", 12).value, null); // hidden in the screenshot, not guessed
+    assert.equal(kb.storeLevelPrice("device", 12).value, 300000);
     assert.deepEqual([2, 10, 11].map((l) => kb.storeLevelPrice("network", l).value), [3000, 120000, 170000]);
     assert.equal(kb.storeLevelPrice("network", 10).reliability, "repeated"); // site + store paste agree
   });

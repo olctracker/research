@@ -65,6 +65,7 @@ export const SEED_OBSERVATIONS: ObservationSet = {
   storeSeed("device-site-9", "device", 8, 9, 120000, "per_level", "hackex.net", "hackex.net Devices table: Nova III"),
   storeSeed("device-site-10", "device", 9, 10, 160000, "per_level", "hackex.net", "hackex.net Devices table: Nova S"),
   storeSeed("device-site-11", "device", 10, 11, 220000, "per_level", "hackex.net", "hackex.net Devices table: Nova X"),
+  storeSeed("device-site-12", "device", 11, 12, 300000, "per_level", "hackex.net", "hackex.net Devices table: Nova Ultra"),
   storeSeed("network-site-2", "network", 1, 2, 3000, "per_level", "hackex.net", "hackex.net Network table: Cable"),
   storeSeed("network-site-3", "network", 2, 3, 7000, "per_level", "hackex.net", "hackex.net Network table: Cable+"),
   storeSeed("network-site-4", "network", 3, 4, 12000, "per_level", "hackex.net", "hackex.net Network table: 4G LTE"),
