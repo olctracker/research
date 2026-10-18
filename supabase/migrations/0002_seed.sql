@@ -149,3 +149,35 @@ insert into public.price_observations
   ('00000000-0000-4000-8000-000000000744', 'notepad', 'store', 0, 1, 5000, 'one_time', 'final', null, 'hackex.net', 'hackex.net software guide'),
   ('00000000-0000-4000-8000-000000000745', 'message_encryptor', 'store', 0, 1, 9000, 'one_time', 'final', null, 'hackex.net', 'hackex.net software guide')
 on conflict (id) do nothing;
+
+-- Keygen key prices from two friends' Apps screens (LOCKED downloads, Oct 18 2026).
+insert into public.price_observations
+  (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, keygen_level, contributor_id, contributor_alias, notes) values
+  ('00000000-0000-4000-8000-000000000800', 'firewall', 'download', 1, 20, 16090, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000801', 'password_encryptor', 'download', 1, 20, 22123, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000802', 'proxy', 'download', 20, 44, 52375, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000803', 'bypasser', 'download', 20, 40, 48389, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000804', 'password_cracker', 'download', 20, 35, 45628, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000805', 'spam', 'download', 20, 32, 57451, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000806', 'rootkit', 'download', 6, 20, 26789, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000807', 'siphon', 'download', 17, 30, 49411, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000808', 'trace', 'download', 0, 35, 38898, 'combined', 'final', 30, null, 'friend A (Keygen 30)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000809', 'antivirus', 'download', 34, 40, 24895, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000810', 'password_encryptor', 'download', 1, 47, 69745, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000811', 'proxy', 'download', 44, 55, 46791, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000812', 'trace', 'download', 38, 55, 62265, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000813', 'bypasser', 'download', 50, 58, 43760, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000814', 'password_cracker', 'download', 40, 56, 87856, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000815', 'spam', 'download', 36, 41, 50296, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000816', 'rootkit', 'download', 25, 50, 113178, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download'),
+  ('00000000-0000-4000-8000-000000000817', 'siphon', 'download', 35, 41, 48389, 'combined', 'final', 50, null, 'friend B (Keygen 50)', 'Apps screen paste: LOCKED download')
+on conflict (id) do nothing;
+
+-- A friend's store screenshot (Oct 18 2026).
+insert into public.price_observations
+  (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, keygen_level, contributor_id, contributor_alias, notes) values
+  ('00000000-0000-4000-8000-000000000900', 'firewall', 'store', 1, 2, 1675, 'per_level', 'final', null, null, 'hilltop''s friend', 'Friend''s store screenshot, Oct 18 2026'),
+  ('00000000-0000-4000-8000-000000000901', 'bypasser', 'store', 20, 21, 41877, 'per_level', 'final', null, null, 'hilltop''s friend', 'Friend''s store screenshot, Oct 18 2026'),
+  ('00000000-0000-4000-8000-000000000902', 'password_encryptor', 'store', 1, 2, 2303, 'per_level', 'final', null, null, 'hilltop''s friend', 'Friend''s store screenshot, Oct 18 2026'),
+  ('00000000-0000-4000-8000-000000000903', 'password_cracker', 'store', 20, 21, 57581, 'per_level', 'final', null, null, 'hilltop''s friend', 'Friend''s store screenshot, Oct 18 2026')
+on conflict (id) do nothing;

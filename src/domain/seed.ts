@@ -20,6 +20,12 @@ const storeSeed = (
   reboots: contributor === "hilltop" ? 3 : null
 });
 
+// Keygen key price for a download from fromLevel to toLevel (shown even when the key can't be bought yet).
+const keySeed = (key: string, upgradeId: string, fromLevel: number, toLevel: number, cost: number, keygenLevel: number, who: string): PriceObservation => ({
+  id: `seed-${key}`, upgradeId, method: "download", fromLevel, toLevel, cost, costType: "combined", priceBasis: "final",
+  keygenLevel, contributor: who, createdAt: at, status: "observed", notes: "Apps screen paste: LOCKED download", purchaseId: null, reboots: null
+});
+
 export const SEED_OBSERVATIONS: ObservationSet = {
   prices: [
   storeSeed("botnet-site-2", "botnet", 1, 2, 800, "per_level", "hackex.net", "hackex.net Botnet Tiers: Node · 4 slots · needs player LVL 3 (site tier 0)"),
@@ -113,6 +119,31 @@ export const SEED_OBSERVATIONS: ObservationSet = {
   storeSeed("guide-keygen-15", "keygen", 14, 15, 20281, "per_level", "hackex.net", "hackex.net software guide: Lv 15", "final"),
   storeSeed("guide-notepad", "notepad", 0, 1, 5000, "one_time", "hackex.net", "hackex.net software guide", "final"),
   storeSeed("guide-message_encryptor", "message_encryptor", 0, 1, 9000, "one_time", "hackex.net", "hackex.net software guide", "final")
+,
+  // Keygen key prices (LOCKED downloads on two friends' Apps screens, Oct 18 2026)
+  keySeed("kg-a-firewall-1-20", "firewall", 1, 20, 16090, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-password_encryptor-1-20", "password_encryptor", 1, 20, 22123, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-proxy-20-44", "proxy", 20, 44, 52375, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-bypasser-20-40", "bypasser", 20, 40, 48389, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-password_cracker-20-35", "password_cracker", 20, 35, 45628, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-spam-20-32", "spam", 20, 32, 57451, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-rootkit-6-20", "rootkit", 6, 20, 26789, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-siphon-17-30", "siphon", 17, 30, 49411, 30, "friend A (Keygen 30)"),
+  keySeed("kg-a-trace-0-35", "trace", 0, 35, 38898, 30, "friend A (Keygen 30)"),
+  keySeed("kg-b-antivirus-34-40", "antivirus", 34, 40, 24895, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-password_encryptor-1-47", "password_encryptor", 1, 47, 69745, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-proxy-44-55", "proxy", 44, 55, 46791, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-trace-38-55", "trace", 38, 55, 62265, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-bypasser-50-58", "bypasser", 50, 58, 43760, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-password_cracker-40-56", "password_cracker", 40, 56, 87856, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-spam-36-41", "spam", 36, 41, 50296, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-rootkit-25-50", "rootkit", 25, 50, 113178, 50, "friend B (Keygen 50)"),
+  keySeed("kg-b-siphon-35-41", "siphon", 35, 41, 48389, 50, "friend B (Keygen 50)"),
+  // A friend's store screenshot
+  storeSeed("friend-firewall-2", "firewall", 1, 2, 1675, "per_level", "hilltop's friend", "Friend's store screenshot, Oct 18 2026"),
+  storeSeed("friend-bypasser-21", "bypasser", 20, 21, 41877, "per_level", "hilltop's friend", "Friend's store screenshot, Oct 18 2026"),
+  storeSeed("friend-password_encryptor-2", "password_encryptor", 1, 2, 2303, "per_level", "hilltop's friend", "Friend's store screenshot, Oct 18 2026"),
+  storeSeed("friend-password_cracker-21", "password_cracker", 20, 21, 57581, "per_level", "hilltop's friend", "Friend's store screenshot, Oct 18 2026")
   ],
   exp: [],
   levelReqs: [

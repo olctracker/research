@@ -464,3 +464,23 @@ describe("hackex.net software guide prices", () => {
     assert.equal(kb.oneTimeItemPrice("notepad").reliability, "repeated");
   });
 });
+
+describe("Keygen key prices from friends' Apps screens", () => {
+  const kb = new Knowledge(SEED_OBSERVATIONS);
+  const base: Record<string, number> = { firewall: 800, bypasser: 800, password_cracker: 1100, password_encryptor: 1100, antivirus: 1000,
+    spam: 1800, siphon: 1600, rootkit: 1400, proxy: 900, trace: 900 };
+  const defensive = new Set(["firewall", "password_encryptor", "antivirus", "proxy", "trace"]);
+  const store = (u: string, l: number) => { const p = Math.ceil(base[u] * Math.pow(l, 1.3)); return defensive.has(u) ? Math.ceil(p * 0.85) : p; };
+  // Candidate formula (not yet used by the app): key = ceil(store(to) × 0.5 × min(1, 0.3 + 0.7 × (jump − 1) / 19))
+  const key = (u: string, from: number, to: number) => Math.ceil(store(u, to) * 0.5 * Math.min(1, 0.3 + (0.7 * (to - from - 1)) / 19));
+  test("all 18 keys match the candidate formula", () => {
+    const keys = SEED_OBSERVATIONS.prices.filter((p) => p.method === "download");
+    assert.equal(keys.length, 18);
+    for (const k of keys) assert.equal(k.cost, key(k.upgradeId, k.fromLevel, k.toLevel), `${k.upgradeId} ${k.fromLevel}->${k.toLevel}`);
+    assert.equal(kb.downloadCombinedPrice("proxy", 20, 44).value, 52375);
+  });
+  test("friend's store prices match the store formula", () => {
+    assert.equal(kb.storeLevelPrice("password_cracker", 21).value, store("password_cracker", 21));
+    assert.equal(kb.storeLevelPrice("bypasser", 21).reliability, "repeated"); // hilltop + friend
+  });
+});
