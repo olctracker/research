@@ -233,6 +233,13 @@ create table if not exists public.purchase_history (
 );
 create index if not exists purchase_history_user on public.purchase_history (user_id, created_at desc);
 
+-- Reboots: the game's R number. Stored with each report so formulas can separate
+-- rebooted and non-rebooted players if prices or XP turn out to differ.
+alter table public.player_progress add column if not exists reboots int not null default 0 check (reboots >= 0 and reboots < 1000);
+alter table public.price_observations add column if not exists reboots int check (reboots is null or (reboots >= 0 and reboots < 1000));
+alter table public.exp_observations add column if not exists reboots int check (reboots is null or (reboots >= 0 and reboots < 1000));
+alter table public.level_requirement_observations add column if not exists reboots int check (reboots is null or (reboots >= 0 and reboots < 1000));
+
 -- ---------------------------------------------------------------------
 -- Row Level Security
 -- ---------------------------------------------------------------------

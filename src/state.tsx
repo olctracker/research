@@ -71,7 +71,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (d.player?.setupComplete) {
       const reqs = newLevelReqs([d.player.character], d.observations, user.username, new Date().toISOString(), newId);
       if (reqs.length) {
-        try { await repo.contribute({ prices: [], exp: [], levelReqs: reqs }); d.observations = await repo.loadObservations(); }
+        try {
+          await repo.contribute({ prices: [], exp: [], levelReqs: reqs.map((x) => ({ ...x, reboots: d.player?.reboots ?? 0 })) });
+          d.observations = await repo.loadObservations();
+        }
         catch { /* not critical */ }
       }
     }
@@ -120,6 +123,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPurchases((list) => list.filter((x) => x.id !== id));
       },
       async contribute(c) {
+        // Tag every report with the reporter's reboot count so formulas can tell groups apart.
+        const rb = player?.reboots ?? 0;
+        const tag = <T extends { reboots?: number | null }>(rows: T[]) => rows.map((x) => ({ ...x, reboots: x.reboots ?? rb }));
+        c = { prices: tag(c.prices), exp: tag(c.exp), levelReqs: tag(c.levelReqs) };
         await r.contribute(c);
         await reloadObservations();
       },

@@ -419,6 +419,8 @@ describe("Starting data from hackex.net and screenshots", () => {
     assert.equal(kb.storeLevelPrice("keygen", 21).value, 31408);
     assert.equal(kb.oneTimeItemPrice("notepad").value, 5000);
     assert.equal(kb.levelRequirement(24).value, 17993);
+    assert.equal(SEED_OBSERVATIONS.prices.find((p) => p.id === "seed-paste-firewall-22")!.reboots, 3);
+    assert.equal(SEED_OBSERVATIONS.prices.find((p) => p.id === "seed-botnet-site-7")!.reboots, null);
   });
   test("Device and Network tables from hackex.net", () => {
     assert.deepEqual([2, 5, 11].map((l) => kb.storeLevelPrice("device", l).value), [4000, 28000, 220000]);

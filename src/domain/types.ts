@@ -50,6 +50,8 @@ export interface PriceObservation {
   status: ObservationStatus;
   notes: string;
   purchaseId: string | null;
+  /** Reporter's reboot count when this was seen (null = unknown, e.g. website data). */
+  reboots?: number | null;
 }
 
 /**
@@ -79,6 +81,8 @@ export interface ExpObservation {
   status: ObservationStatus;
   notes: string;
   purchaseId: string | null;
+  /** Reporter's reboot count when this was seen (null = unknown, e.g. website data). */
+  reboots?: number | null;
 }
 
 /** "Character level N needs X XP to reach level N+1." */
@@ -90,6 +94,8 @@ export interface LevelRequirementObservation {
   createdAt: string;
   status: ObservationStatus;
   notes: string;
+  /** Reporter's reboot count when this was seen (null = unknown, e.g. website data). */
+  reboots?: number | null;
 }
 
 export interface CharacterState {
@@ -107,6 +113,8 @@ export interface PlayerState {
   levels: Record<string, number>;
   setupComplete: boolean;
   updatedAt: string;
+  /** Times this player has rebooted (the game's R number). */
+  reboots?: number;
 }
 
 export type Confidence = "exact" | "uses_unverified" | "incomplete" | "estimate";

@@ -260,6 +260,7 @@ function Observations() {
                   <div className="hint">
                     {a.o.contributor} · {new Date(a.o.createdAt).toLocaleDateString()}
                     {a.type === "price" && a.o.keygenLevel !== null ? ` · Keygen ${a.o.keygenLevel}` : ""}
+                    {a.o.reboots != null ? ` · R${a.o.reboots}` : ""}
                     {a.o.notes ? ` · ${a.o.notes}` : ""}
                   </div>
                   {f.map((x) => (

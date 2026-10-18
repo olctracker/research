@@ -107,3 +107,9 @@ insert into public.price_observations
   (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, contributor_id, contributor_alias, notes) values
   ('00000000-0000-4000-8000-000000000600', 'device', 'store', 11, 12, 300000, 'per_level', 'final', null, 'hackex.net', 'hackex.net Devices table: Nova Ultra')
 on conflict (id) do nothing;
+
+-- hilltop's store paste and home screenshot were taken at reboot R3.
+update public.price_observations set reboots = 3
+  where contributor_id is null and contributor_alias = 'hilltop' and reboots is null;
+update public.level_requirement_observations set reboots = 3
+  where contributor_id is null and contributor_alias = 'hilltop' and reboots is null;

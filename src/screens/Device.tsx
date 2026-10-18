@@ -10,14 +10,31 @@ import { Card, Notice, Stepper } from "../ui/components";
 const GROUPS: Category[] = ["core", "defensive", "offensive", "virus", "utility"];
 
 export default function Device({ onDone, first = false }: { onDone: () => void; first?: boolean }) {
-  const { player, savePlayer, user, observations, contribute } = useApp();
+  const { player, savePlayer, user, observations, contribute, kb } = useApp();
   const [char, setChar] = useState(draftFrom(player?.character));
   const [levels, setLevels] = useState<Record<string, number>>({ ...defaultLevels(), ...(player?.levels ?? {}) });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [reboots, setReboots] = useState(player?.reboots ?? 0);
+  const [rebootNote, setRebootNote] = useState(false);
 
   const setLevel = (id: string, v: number) => { setSaved(false); setLevels((l) => ({ ...l, [id]: v })); };
+
+  /** A reboot puts you back at LVL 1 with starting hardware and software. Fills the form; Save makes it real. */
+  function rebooted() {
+    if (!confirm(`Record a reboot?\n\nThis sets Reboots to ${reboots + 1}, your character to LVL 1, and every program back to its starting level. Check the numbers, then tap Save.`)) return;
+    setReboots(reboots + 1);
+    const req = kb.levelRequirement(1).value;
+    setChar({ level: "1", exp: "0", required: req !== null ? String(req) : "" });
+    setLevels((l) => {
+      const next = { ...l };
+      for (const e of CATALOG) if (e.kind === "level") next[e.id] = e.startLevel;
+      return next;
+    });
+    setSaved(false);
+    setRebootNote(true);
+  }
 
   async function save() {
     const { state, error: e } = parseDraft(char);
@@ -27,7 +44,7 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
       if (msg) { setError(`${entry.name}: ${msg}`); return; }
     }
     const next: PlayerState = {
-      alias: user.username, character: state, levels, setupComplete: true, updatedAt: new Date().toISOString()
+      alias: user.username, character: state, levels, setupComplete: true, updatedAt: new Date().toISOString(), reboots
     };
     setBusy(true);
     try {
@@ -36,6 +53,7 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
       const reqs = newLevelReqs([state], observations, user.username, next.updatedAt, newId);
       if (reqs.length) await contribute({ prices: [], exp: [], levelReqs: reqs }).catch(() => { /* saving the device still worked */ });
       setError(null);
+      setRebootNote(false);
       if (first) onDone(); else setSaved(true);
     }
     catch (err) { setError(err instanceof Error ? err.message : String(err)); }
@@ -54,6 +72,20 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
       <Card title="Character">
         <CharacterForm draft={char} onChange={(d) => { setSaved(false); setChar(d); }} />
         <div className="hint">Copy these from your game home screen: LVL, then XP progress (for example 5870 / 17993).</div>
+        <div className="row reboot-row">
+          <div className="grow">
+            <div className="row-title">Reboots</div>
+            <div className="hint">The R number on your game home screen (R3 = 3). 0 if you've never rebooted.</div>
+          </div>
+          <Stepper label="Reboots" value={reboots} min={0} max={999} onChange={(v) => { setSaved(false); setReboots(v); }} />
+        </div>
+        {!first && <button className="btn ghost full" onClick={rebooted}>I just rebooted</button>}
+        {rebootNote && (
+          <Notice tone="warn">
+            Reboot filled in: LVL 1 and starting levels. Enter the XP numbers your game shows now.
+            One-time purchases were left as they were — switch them off below if the reboot removed them. Then tap <b>Save my device</b>.
+          </Notice>
+        )}
       </Card>
 
       {GROUPS.map((g) => (

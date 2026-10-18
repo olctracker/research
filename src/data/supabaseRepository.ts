@@ -34,18 +34,20 @@ const toPrice = (r: Row): PriceObservation => ({
   fromLevel: Number(r.from_level), toLevel: Number(r.to_level), cost: Number(r.cost),
   costType: r.cost_type as PriceObservation["costType"], priceBasis: r.price_basis as PriceObservation["priceBasis"],
   keygenLevel: num(r.keygen_level), contributor: who(r), createdAt: r.created_at as string,
-  status: r.status as PriceObservation["status"], notes: (r.notes as string) ?? "", purchaseId: (r.purchase_id as string) ?? null
+  status: r.status as PriceObservation["status"], notes: (r.notes as string) ?? "", purchaseId: (r.purchase_id as string) ?? null,
+  reboots: num(r.reboots)
 });
 const toExp = (r: Row): ExpObservation => ({
   id: r.id as string, upgradeId: r.upgrade_id as string, method: r.method as ExpObservation["method"],
   fromLevel: Number(r.from_level), toLevel: Number(r.to_level), exp: Number(r.exp),
   expBasis: r.exp_basis as ExpObservation["expBasis"], source: r.source as ExpObservation["source"],
   contributor: who(r), createdAt: r.created_at as string, status: r.status as ExpObservation["status"],
-  notes: (r.notes as string) ?? "", purchaseId: (r.purchase_id as string) ?? null
+  notes: (r.notes as string) ?? "", purchaseId: (r.purchase_id as string) ?? null, reboots: num(r.reboots)
 });
 const toReq = (r: Row): LevelRequirementObservation => ({
   id: r.id as string, level: Number(r.level), expRequired: Number(r.exp_required), contributor: who(r),
-  createdAt: r.created_at as string, status: r.status as LevelRequirementObservation["status"], notes: (r.notes as string) ?? ""
+  createdAt: r.created_at as string, status: r.status as LevelRequirementObservation["status"], notes: (r.notes as string) ?? "",
+  reboots: num(r.reboots)
 });
 
 export class SupabaseRepository implements Repository {
@@ -135,14 +137,14 @@ export class SupabaseRepository implements Repository {
     return {
       alias: this.username,
       character: { level: Number(p.level), exp: Number(p.exp), required: num(p.required) },
-      levels, setupComplete: !!p.setup_complete, updatedAt: p.updated_at as string
+      levels, setupComplete: !!p.setup_complete, updatedAt: p.updated_at as string, reboots: Number(p.reboots ?? 0)
     };
   }
 
   async savePlayer(p: PlayerState) {
     check(await this.sb.from("player_progress").upsert({
       user_id: this.userId, level: p.character.level, exp: p.character.exp, required: p.character.required,
-      setup_complete: p.setupComplete, updated_at: p.updatedAt
+      setup_complete: p.setupComplete, updated_at: p.updatedAt, reboots: p.reboots ?? 0
     }));
     check(await this.sb.from("player_upgrade_state").upsert(
       Object.entries(p.levels).map(([upgrade_id, level]) => ({ user_id: this.userId, upgrade_id, level, updated_at: p.updatedAt })),
@@ -199,14 +201,14 @@ export class SupabaseRepository implements Repository {
     if (c.prices.length) check(await this.sb.from(TABLE.price).insert(c.prices.map((p) => ({
       ...meta, id: p.id, upgrade_id: p.upgradeId, method: p.method, from_level: p.fromLevel, to_level: p.toLevel,
       cost: p.cost, cost_type: p.costType, price_basis: p.priceBasis, keygen_level: p.keygenLevel,
-      notes: p.notes, purchase_id: p.purchaseId
+      notes: p.notes, purchase_id: p.purchaseId, reboots: p.reboots ?? null
     }))));
     if (c.exp.length) check(await this.sb.from(TABLE.exp).insert(c.exp.map((x) => ({
       ...meta, id: x.id, upgrade_id: x.upgradeId, method: x.method, from_level: x.fromLevel, to_level: x.toLevel,
-      exp: x.exp, exp_basis: x.expBasis, source: x.source, notes: x.notes, purchase_id: x.purchaseId
+      exp: x.exp, exp_basis: x.expBasis, source: x.source, notes: x.notes, purchase_id: x.purchaseId, reboots: x.reboots ?? null
     }))));
     if (c.levelReqs.length) check(await this.sb.from(TABLE.level_req).insert(c.levelReqs.map((x) => ({
-      ...meta, id: x.id, level: x.level, exp_required: x.expRequired, notes: x.notes
+      ...meta, id: x.id, level: x.level, exp_required: x.expRequired, notes: x.notes, reboots: x.reboots ?? null
     }))));
   }
 

@@ -59,6 +59,7 @@ export default function Conflicts() {
                         {fromPurchase(r) && <span className="chip">from a recorded purchase</span>}
                         {how(r) && <span className="chip">{how(r)}</span>}
                         {"keygenLevel" in r && r.keygenLevel !== null && <span className="chip">Keygen {r.keygenLevel}</span>}
+                        {r.reboots != null && <span className="chip">R{r.reboots}</span>}
                         {r.notes && <div className="hint">“{r.notes}”</div>}
                       </li>
                     ))}

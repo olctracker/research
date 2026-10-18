@@ -30,7 +30,7 @@ export default function Dashboard() {
         </button>
       )}
 
-      <Card title={<>LVL <span className="mono big">{c.level}</span></>}
+      <Card title={<>LVL <span className="mono big">{c.level}</span>{(player.reboots ?? 0) > 0 && <span className="badge rel-repeated reboot-badge">R{player.reboots}</span>}</>}
         action={<button className="btn sm ghost" onClick={() => go("device")}>Update</button>}>
         <div className="xp-line">
           <span className="muted">XP progress</span>

@@ -27,7 +27,9 @@ const storeSeed = (
   costType: "per_level" | "one_time", contributor: string, notes: string
 ): PriceObservation => ({
   id: `seed-${key}`, upgradeId, method: "store", fromLevel, toLevel, cost, costType, priceBasis: "final",
-  keygenLevel: null, contributor, createdAt: at, status: "observed", notes, purchaseId: null
+  keygenLevel: null, contributor, createdAt: at, status: "observed", notes, purchaseId: null,
+  // hilltop's paste was taken at R3; website tables don't say.
+  reboots: contributor === "hilltop" ? 3 : null
 });
 
 export const SEED_OBSERVATIONS: ObservationSet = {
@@ -79,6 +81,6 @@ export const SEED_OBSERVATIONS: ObservationSet = {
   ],
   exp: [exp(2, 2), exp(3, 3), exp(4, 4), exp(5, 5)],
   levelReqs: [
-    { id: "seed-levelreq-24", level: 24, expRequired: 17993, contributor: "hilltop", createdAt: at, status: "observed", notes: "Game home screenshot, Oct 18 2026" }
+    { id: "seed-levelreq-24", level: 24, expRequired: 17993, contributor: "hilltop", createdAt: at, status: "observed", notes: "Game home screenshot, Oct 18 2026", reboots: 3 }
   ]
 };
