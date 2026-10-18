@@ -35,7 +35,7 @@ export default function DataTable() {
     const mine = player?.levels[e.id] ?? e.startLevel;
     const to = e.maxLevel ?? Math.max(20, kb.highestObservedLevel(e.id) + 3, mine + 3) + extra;
     const out = [];
-    for (let l = e.startLevel + 1; l <= to; l++) {
+    for (let l = 1; l <= to; l++) {
       out.push({
         level: l,
         cells: [

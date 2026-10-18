@@ -26,23 +26,7 @@ on conflict (id) do update set
   max_level = excluded.max_level, store = excluded.store, download = excluded.download,
   defensive_discount = excluded.defensive_discount, sort_order = excluded.sort_order;
 
--- Example A: Spam store levels 2–5 (observed once each; not a confirmed formula).
--- Fixed ids so re-running doesn't duplicate them.
-insert into public.price_observations
-  (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, contributor_id, contributor_alias, notes) values
-  ('00000000-0000-4000-8000-000000000102', 'spam', 'store', 1, 2, 200, 'per_level', 'final', null, 'spec-example', 'Spec Example A (store 1 → 5)'),
-  ('00000000-0000-4000-8000-000000000103', 'spam', 'store', 2, 3, 300, 'per_level', 'final', null, 'spec-example', 'Spec Example A (store 1 → 5)'),
-  ('00000000-0000-4000-8000-000000000104', 'spam', 'store', 3, 4, 400, 'per_level', 'final', null, 'spec-example', 'Spec Example A (store 1 → 5)'),
-  ('00000000-0000-4000-8000-000000000105', 'spam', 'store', 4, 5, 500, 'per_level', 'final', null, 'spec-example', 'Spec Example A (store 1 → 5)')
-on conflict (id) do nothing;
-
-insert into public.exp_observations
-  (id, upgrade_id, method, from_level, to_level, exp, exp_basis, source, contributor_id, contributor_alias, notes) values
-  ('00000000-0000-4000-8000-000000000202', 'spam', 'store', 1, 2, 2, 'per_level', 'entered', null, 'spec-example', 'Spec Example A (store 1 → 5)'),
-  ('00000000-0000-4000-8000-000000000203', 'spam', 'store', 2, 3, 3, 'per_level', 'entered', null, 'spec-example', 'Spec Example A (store 1 → 5)'),
-  ('00000000-0000-4000-8000-000000000204', 'spam', 'store', 3, 4, 4, 'per_level', 'entered', null, 'spec-example', 'Spec Example A (store 1 → 5)'),
-  ('00000000-0000-4000-8000-000000000205', 'spam', 'store', 4, 5, 5, 'per_level', 'entered', null, 'spec-example', 'Spec Example A (store 1 → 5)')
-on conflict (id) do nothing;
+-- (The spec's illustrative Example A is not seeded: real Spam level 5 costs 14,586.)
 
 -- Botnet tier prices from hackex.net (site tier 0 "Free" = our level 1) and the
 -- next-level prices from hilltop's store screen paste (Oct 18 2026).
@@ -113,3 +97,55 @@ update public.price_observations set reboots = 3
   where contributor_id is null and contributor_alias = 'hilltop' and reboots is null;
 update public.level_requirement_observations set reboots = 3
   where contributor_id is null and contributor_alias = 'hilltop' and reboots is null;
+
+-- hackex.net software guide: base (level 1) prices and levels 5, 10, 15.
+-- Defensive base prices are list prices before the 15% store discount.
+insert into public.price_observations
+  (id, upgrade_id, method, from_level, to_level, cost, cost_type, price_basis, contributor_id, contributor_alias, notes) values
+  ('00000000-0000-4000-8000-000000000700', 'firewall', 'store', 0, 1, 800, 'per_level', 'before_discount', null, 'hackex.net', 'hackex.net software guide: base price (before 15% defensive discount)'),
+  ('00000000-0000-4000-8000-000000000701', 'firewall', 'store', 4, 5, 5511, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000702', 'firewall', 'store', 9, 10, 13569, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000703', 'firewall', 'store', 14, 15, 22985, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000704', 'bypasser', 'store', 0, 1, 800, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: base price'),
+  ('00000000-0000-4000-8000-000000000705', 'bypasser', 'store', 4, 5, 6483, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000706', 'bypasser', 'store', 9, 10, 15963, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000707', 'bypasser', 'store', 14, 15, 27041, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000708', 'password_cracker', 'store', 0, 1, 1100, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: base price'),
+  ('00000000-0000-4000-8000-000000000709', 'password_cracker', 'store', 4, 5, 8914, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000710', 'password_cracker', 'store', 9, 10, 21948, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000711', 'password_cracker', 'store', 14, 15, 37181, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000712', 'password_encryptor', 'store', 0, 1, 1100, 'per_level', 'before_discount', null, 'hackex.net', 'hackex.net software guide: base price (before 15% defensive discount)'),
+  ('00000000-0000-4000-8000-000000000713', 'password_encryptor', 'store', 4, 5, 7577, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000714', 'password_encryptor', 'store', 9, 10, 18656, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000715', 'password_encryptor', 'store', 14, 15, 31604, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000716', 'antivirus', 'store', 0, 1, 1000, 'per_level', 'before_discount', null, 'hackex.net', 'hackex.net software guide: base price (before 15% defensive discount)'),
+  ('00000000-0000-4000-8000-000000000717', 'antivirus', 'store', 4, 5, 6889, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000718', 'antivirus', 'store', 9, 10, 16961, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000719', 'antivirus', 'store', 14, 15, 28731, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000720', 'spam', 'store', 0, 1, 1800, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: base price'),
+  ('00000000-0000-4000-8000-000000000721', 'spam', 'store', 4, 5, 14586, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000722', 'spam', 'store', 9, 10, 35915, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000723', 'spam', 'store', 14, 15, 60841, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000724', 'siphon', 'store', 0, 1, 1600, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: base price'),
+  ('00000000-0000-4000-8000-000000000725', 'siphon', 'store', 4, 5, 12966, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000726', 'siphon', 'store', 9, 10, 31925, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000727', 'siphon', 'store', 14, 15, 54081, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000728', 'rootkit', 'store', 0, 1, 1400, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: base price'),
+  ('00000000-0000-4000-8000-000000000729', 'rootkit', 'store', 4, 5, 11345, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000730', 'rootkit', 'store', 9, 10, 27934, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000731', 'rootkit', 'store', 14, 15, 47321, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000732', 'proxy', 'store', 0, 1, 900, 'per_level', 'before_discount', null, 'hackex.net', 'hackex.net software guide: base price (before 15% defensive discount)'),
+  ('00000000-0000-4000-8000-000000000733', 'proxy', 'store', 4, 5, 6200, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000734', 'proxy', 'store', 9, 10, 15265, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000735', 'proxy', 'store', 14, 15, 25858, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000736', 'trace', 'store', 0, 1, 900, 'per_level', 'before_discount', null, 'hackex.net', 'hackex.net software guide: base price (before 15% defensive discount)'),
+  ('00000000-0000-4000-8000-000000000737', 'trace', 'store', 4, 5, 6200, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000738', 'trace', 'store', 9, 10, 15265, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000739', 'trace', 'store', 14, 15, 25858, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000740', 'keygen', 'store', 0, 1, 600, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: base price'),
+  ('00000000-0000-4000-8000-000000000741', 'keygen', 'store', 4, 5, 4862, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 5'),
+  ('00000000-0000-4000-8000-000000000742', 'keygen', 'store', 9, 10, 11972, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 10'),
+  ('00000000-0000-4000-8000-000000000743', 'keygen', 'store', 14, 15, 20281, 'per_level', 'final', null, 'hackex.net', 'hackex.net software guide: Lv 15'),
+  ('00000000-0000-4000-8000-000000000744', 'notepad', 'store', 0, 1, 5000, 'one_time', 'final', null, 'hackex.net', 'hackex.net software guide'),
+  ('00000000-0000-4000-8000-000000000745', 'message_encryptor', 'store', 0, 1, 9000, 'one_time', 'final', null, 'hackex.net', 'hackex.net software guide')
+on conflict (id) do nothing;

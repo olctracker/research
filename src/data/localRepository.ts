@@ -100,7 +100,10 @@ export class LocalRepository implements Repository {
   }
   async loadObservations(): Promise<ObservationSet> {
     // Add any starting data this browser doesn't have yet (new seeds ship with app updates).
-    const o = read<ObservationSet>(K.obs, { prices: [], exp: [], levelReqs: [] });
+    const stored = read<ObservationSet>(K.obs, { prices: [], exp: [], levelReqs: [] });
+    // Retired starting data: the spec's made-up Spam example (real Spam 5 costs 14,586).
+    const keep = <T extends { id: string }>(rows: T[]) => rows.filter((r) => !r.id.startsWith("seed-spam-store-"));
+    const o = { prices: keep(stored.prices), exp: keep(stored.exp), levelReqs: stored.levelReqs };
     const add = <T extends { id: string }>(have: T[], seed: T[]) => [...have, ...seed.filter((x) => !have.some((h) => h.id === x.id))];
     return { prices: add(o.prices, SEED_OBSERVATIONS.prices), exp: add(o.exp, SEED_OBSERVATIONS.exp), levelReqs: add(o.levelReqs, SEED_OBSERVATIONS.levelReqs) };
   }

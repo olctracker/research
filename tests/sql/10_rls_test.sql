@@ -40,7 +40,7 @@ do $$ begin
 end $$;
 select pg_temp.expect_error($$select * from public.login_attempts$$, 'anon read login attempts');
 select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '1234')$$, 'anon reset PIN');
-select pg_temp.expect_error($$insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,600,'per_level')$$, 'anon insert observation');
+select pg_temp.expect_error($$insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,123456,'per_level')$$, 'anon insert observation');
 select pg_temp.expect_error($$select * from public.player_progress$$, 'anon read player_progress');
 reset role;
 
@@ -52,9 +52,9 @@ insert into public.player_upgrade_state (upgrade_id, level) values ('spam', 5), 
 insert into public.purchase_history (upgrade_id, method, from_level, to_level, cost, cost_source, exp_earned, exp_expected,
   before_level, before_exp, before_required, after_level, after_exp, after_required, confidence)
   values ('spam','store',4,5,500,'observed',5,5,4,90,130,4,95,130,'uses_unverified');
-insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, contributor_alias) values ('spam','store',5,6,600,'per_level','someone_else');
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, contributor_alias) values ('spam','store',5,6,123456,'per_level','someone_else');
 do $$ begin
-  if (select contributor_alias from public.price_observations where cost = 600) <> 'alice' then raise exception 'FAILED: contributor name not stamped from profile'; end if;
+  if (select contributor_alias from public.price_observations where cost = 123456) <> 'alice' then raise exception 'FAILED: contributor name not stamped from profile'; end if;
   if (select count(*) from public.player_profiles) <> 1 then raise exception 'FAILED: non-admin sees other profiles'; end if;
 end $$;
 select pg_temp.expect_error($$update public.player_profiles set username = 'mallory'$$, 'rename own username');
@@ -71,13 +71,13 @@ select pg_temp.expect_error($$insert into public.exp_observations (upgrade_id, m
 select pg_temp.expect_error($$insert into public.player_upgrade_state (upgrade_id, level) values ('network', 12)$$, 'player Network above cap');
 select pg_temp.expect_error($$insert into public.player_progress (user_id, level, exp) values ('22222222-2222-2222-2222-222222222222', 1, 0)$$, 'write another user''s progress');
 do $$ begin
-  update public.price_observations set status = 'confirmed' where cost = 600;
-  if exists (select 1 from public.price_observations where cost = 600 and status = 'confirmed') then
+  update public.price_observations set status = 'confirmed' where cost = 123456;
+  if exists (select 1 from public.price_observations where cost = 123456 and status = 'confirmed') then
     raise exception 'FAILED: non-admin confirmed an observation';
   end if;
 end $$;
 select pg_temp.expect_error($$delete from public.price_observations$$, 'delete shared observations');
-select pg_temp.expect_error($$update public.price_observations set cost = 1 where cost = 600$$, 'edit raw cost through API');
+select pg_temp.expect_error($$update public.price_observations set cost = 1 where cost = 123456$$, 'edit raw cost through API');
 reset role;
 
 -- ---------- user B ----------
@@ -89,10 +89,10 @@ do $$ begin
   if exists (select 1 from public.purchase_history) then raise exception 'FAILED: B sees A''s history'; end if;
   update public.player_progress set level = 99;
   delete from public.purchase_history;   -- allowed for own rows; A's rows are invisible so nothing happens
-  if not exists (select 1 from public.price_observations where cost = 600) or (select count(*) from public.price_observations) < 5 then raise exception 'FAILED: B cannot read shared data'; end if;
+  if not exists (select 1 from public.price_observations where cost = 123456) or (select count(*) from public.price_observations) < 5 then raise exception 'FAILED: B cannot read shared data'; end if;
 end $$;
 insert into public.observation_flags (observation_type, observation_id, reason)
-  select 'price', id, 'looks wrong' from public.price_observations where cost = 600;
+  select 'price', id, 'looks wrong' from public.price_observations where cost = 123456;
 reset role;
 
 do $$ begin
@@ -104,9 +104,9 @@ end $$;
 insert into public.app_admins values ('11111111-1111-1111-1111-111111111111');
 set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
-insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,650,'per_level');
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,123457,'per_level');
 select public.admin_resolve('price_observations',
-  array(select id from public.price_observations where cost = 600), array(select id from public.price_observations where cost = 650));
+  array(select id from public.price_observations where cost = 123456), array(select id from public.price_observations where cost = 123457));
 update public.observation_flags set resolved = true;
 select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '4321');
 do $$ begin
@@ -115,13 +115,13 @@ end $$;
 select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '12a4')$$, 'bad PIN format');
 reset role;
 do $$ begin
-  if (select status from public.price_observations where cost = 650) <> 'rejected' then raise exception 'FAILED: losing value not rejected'; end if;
+  if (select status from public.price_observations where cost = 123457) <> 'rejected' then raise exception 'FAILED: losing value not rejected'; end if;
   if (select encrypted_password from auth.users where id = '22222222-2222-2222-2222-222222222222') <> crypt('hedb#4321#pin', (select encrypted_password from auth.users where id = '22222222-2222-2222-2222-222222222222')) then
     raise exception 'FAILED: PIN reset did not set the expected password';
   end if;
 end $$;
 do $$ begin
-  if not exists (select 1 from public.price_observations where cost = 600 and status = 'confirmed') then raise exception 'FAILED: admin could not confirm'; end if;
+  if not exists (select 1 from public.price_observations where cost = 123456 and status = 'confirmed') then raise exception 'FAILED: admin could not confirm'; end if;
   if exists (select 1 from public.observation_flags where not resolved) then raise exception 'FAILED: admin could not resolve flag'; end if;
 end $$;
 

@@ -27,6 +27,12 @@ const E = (o: Partial<ExpObservation>): ExpObservation => ({
   source: "entered", contributor: "test", createdAt: "x", status: "observed", notes: "", purchaseId: null, ...o
 });
 const noReq = () => null;
+// The spec's illustrative Example A (not real game prices): Spam store 2–5 = 200/300/400/500, XP 2–5.
+const EXAMPLE_A: ObservationSet = {
+  prices: [2, 3, 4, 5].map((l) => P({ id: `exA-p${l}`, fromLevel: l - 1, toLevel: l, cost: l * 100 })),
+  exp: [2, 3, 4, 5].map((l) => E({ id: `exA-x${l}`, fromLevel: l - 1, toLevel: l, exp: l })),
+  levelReqs: []
+};
 
 describe("Catalog", () => {
   test("16 entries: 14 level-based + 2 one-time", () => {
@@ -126,7 +132,7 @@ describe("EXP calculations", () => {
 
 describe("Purchase logic", () => {
   test("store purchase sums each level (Example A: 1 → 5 = 1,400 cost, 14 EXP)", () => {
-    const kb = new Knowledge(SEED_OBSERVATIONS);
+    const kb = new Knowledge(EXAMPLE_A);
     const plan = planPurchase({ entry: getEntry("spam"), method: "store", currentLevel: 1, targetLevel: 5, keygenLevel: 0, kb });
     assert.deepEqual(plan.errors, []);
     assert.equal(plan.lines.length, 4);
@@ -243,7 +249,7 @@ describe("Data integrity", () => {
   });
 
   test("mismatch between known rewards and character change is flagged, nothing inferred", () => {
-    const kb = new Knowledge(SEED_OBSERVATIONS);
+    const kb = new Knowledge(EXAMPLE_A);
     const plan = planPurchase({ entry: getEntry("spam"), method: "store", currentLevel: 1, targetLevel: 2, keygenLevel: 0, kb });
     const res = buildRecord({
       plan, entered: {}, before: { level: 4, exp: 10, required: 130 }, after: { level: 4, exp: 20, required: 130 },
@@ -271,8 +277,7 @@ describe("Data integrity", () => {
   });
 
   test("completeness reports its range and never claims full coverage of uncapped software", () => {
-    const exampleA = { ...SEED_OBSERVATIONS, prices: SEED_OBSERVATIONS.prices.filter((p) => p.id.startsWith("seed-spam-store")) };
-    const rows = computeCompleteness(new Knowledge(exampleA));
+    const rows = computeCompleteness(new Knowledge(EXAMPLE_A));
     const spam = rows.find((r) => r.upgradeId === "spam" && r.series === "store_price");
     assert.ok(spam);
     assert.equal(spam.rangeKind, "horizon");
@@ -353,7 +358,7 @@ describe("Next-level prices and XP carry-over", () => {
 
   test("known prices aren't counted as missing; maxed and owned items are skipped", () => {
     const levels = { ...defaultLevels(), spam: 1, botnet: 7, notepad: 1 };
-    const rows = nextPriceRows(levels, new Knowledge(SEED_OBSERVATIONS), "store");
+    const rows = nextPriceRows(levels, new Knowledge(EXAMPLE_A), "store");
     assert.equal(rows.find((r) => r.entry.id === "spam")!.status, "known"); // spam 2 = 200 is seeded
     assert.equal(rows.find((r) => r.entry.id === "botnet")!.status, "maxed");
     assert.equal(rows.find((r) => r.entry.id === "notepad")!.status, "owned");
@@ -427,5 +432,35 @@ describe("Starting data from hackex.net and screenshots", () => {
     assert.equal(kb.storeLevelPrice("device", 12).value, 300000);
     assert.deepEqual([2, 10, 11].map((l) => kb.storeLevelPrice("network", l).value), [3000, 120000, 170000]);
     assert.equal(kb.storeLevelPrice("network", 10).reliability, "repeated"); // site + store paste agree
+  });
+});
+
+describe("hackex.net software guide prices", () => {
+  const kb = new Knowledge(SEED_OBSERVATIONS);
+  const base: Record<string, number> = { firewall: 800, bypasser: 800, password_cracker: 1100, password_encryptor: 1100, antivirus: 1000,
+    spam: 1800, siphon: 1600, rootkit: 1400, proxy: 900, trace: 900, keygen: 600 };
+  const defensive = new Set(["firewall", "password_encryptor", "antivirus", "proxy", "trace"]);
+  // Candidate formula found from this data (not yet built into the app):
+  // price = ceil(base × level^1.3); defensive: ceil(that × 0.85)
+  const formula = (u: string, l: number) => {
+    const p = Math.ceil(base[u] * Math.pow(l, 1.3));
+    return defensive.has(u) ? Math.ceil(p * 0.85) : p;
+  };
+  test("guide levels 5/10/15 and the store paste all match the candidate formula", () => {
+    const checks: [string, number][] = [];
+    for (const u of Object.keys(base)) for (const l of [5, 10, 15]) checks.push([u, l]);
+    checks.push(["firewall", 22], ["bypasser", 21], ["password_encryptor", 2], ["password_cracker", 2], ["spam", 21],
+      ["siphon", 18], ["rootkit", 1], ["antivirus", 2], ["proxy", 21], ["trace", 1], ["keygen", 21]);
+    for (const [u, l] of checks) {
+      const seen = kb.storeLevelPrice(u, l).value;
+      assert.equal(seen, formula(u, l), `${u} level ${l}`);
+    }
+  });
+  test("defensive base prices are kept as before-discount list prices", () => {
+    const fw = SEED_OBSERVATIONS.prices.find((p) => p.id === "seed-guide-firewall-1")!;
+    assert.equal(fw.priceBasis, "before_discount");
+    assert.equal(kb.storeLevelPrice("bypasser", 1).value, 800);
+    assert.equal(kb.oneTimeItemPrice("message_encryptor").value, 9000);
+    assert.equal(kb.oneTimeItemPrice("notepad").reliability, "repeated");
   });
 });
