@@ -7,7 +7,7 @@ import { missingKey, MissingKind, planPurchase, PurchasePlan, totalsWithEntered 
 import { buildRecord, Candidate, RecordResult } from "../domain/record";
 import type { Category, Method, PlayerState } from "../domain/types";
 import { useApp } from "../state";
-import { CharacterForm, CharDraft, parseDraft } from "../ui/CharacterForm";
+import { CharacterForm, CharDraft, draftFrom, parseDraft } from "../ui/CharacterForm";
 import { Card, fmt, Notice, NumberField, parseWhole, Segmented, Stepper, ValueCell } from "../ui/components";
 import { go } from "../ui/router";
 
@@ -23,6 +23,7 @@ export default function Buy() {
   const [target, setTarget] = useState(1);
   const [enteredText, setEnteredText] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
+  const [before, setBefore] = useState<CharDraft>(draftFrom(player.character));
   const [after, setAfter] = useState<CharDraft>({ level: "", exp: "", required: "" });
   const [result, setResult] = useState<RecordResult | null>(null);
   const [checked, setChecked] = useState<boolean[]>([]);
@@ -54,6 +55,7 @@ export default function Buy() {
     setMethod("store");
     setTarget(e.kind === "one_time" ? 1 : lvl + 1);
     setEnteredText({}); setNotes(""); setErr(null); setResult(null); setShared(null);
+    setBefore(draftFrom(player.character));
     setStep("details");
   }
 
@@ -94,7 +96,6 @@ export default function Buy() {
 
   const oneTime = entry.kind === "one_time";
   const priceKind: MissingKind = method === "download" ? "download_price" : oneTime ? "one_time_price" : "store_price";
-  const expKind: MissingKind = method === "download" ? "download_exp" : oneTime ? "one_time_exp" : "store_exp";
   const setEntered = (k: string, v: string) => setEnteredText((m) => ({ ...m, [k]: v }));
 
   // ---------- step 2: method, destination, data check ----------
@@ -130,14 +131,13 @@ export default function Buy() {
         {plan.errors.map((e) => <Notice key={e} tone="bad">{e}</Notice>)}
 
         {plan.errors.length === 0 && (
-          <Card title="Costs and EXP">
+          <Card title="Costs and XP">
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>{method === "download" ? "Levels" : "Level"}</th><th>Cost</th><th>EXP</th></tr></thead>
+                <thead><tr><th>{method === "download" ? "Levels" : "Level"}</th><th>Cost</th><th>XP</th></tr></thead>
                 <tbody>
                   {plan.lines.map((l) => {
                     const ck = missingKey({ kind: priceKind, fromLevel: l.fromLevel, toLevel: l.toLevel });
-                    const ek = missingKey({ kind: expKind, fromLevel: l.fromLevel, toLevel: l.toLevel });
                     const needCost = l.cost.value === null;
                     const estimate = l.costSource === "component_sum";
                     return (
@@ -151,9 +151,7 @@ export default function Buy() {
                           )}
                         </td>
                         <td>
-                          {l.exp.value !== null ? <ValueCell l={l.exp} /> : (
-                            <NumberField compact label="EXP (if shown)" value={enteredText[ek] ?? ""} onChange={(v) => setEntered(ek, v)} placeholder="optional" />
-                          )}
+                          {l.exp.value !== null ? <ValueCell l={l.exp} /> : <span className="muted small">Worked out after you buy</span>}
                         </td>
                       </tr>
                     );
@@ -168,8 +166,11 @@ export default function Buy() {
               <Notice tone="warn">
                 <b>Missing from the database:</b>
                 <ul className="tight">{plan.missing.map((m) => <li key={missingKey(m)}>{m.label}{m.reason === "conflict" ? " (records conflict)" : ""}</li>)}</ul>
-                Fill in what the game shows. Missing EXP can usually be worked out from your character screen after buying.
+                Enter the price the game shows. Missing XP is worked out from your stats after you buy.
               </Notice>
+            )}
+            {method === "store" && plan.lines.filter((l) => l.exp.value === null).length > 1 && (
+              <Notice tone="info">Tip: record <b>one level at a time</b> to learn each level's XP. If you buy several at once, only their combined XP can be worked out.</Notice>
             )}
             {plan.usesUnverified && <Notice tone="info">Some values have only been seen once, so treat them as unverified.</Notice>}
             {plan.warnings.map((w) => <Notice key={w} tone="info">{w}</Notice>)}
@@ -185,7 +186,9 @@ export default function Buy() {
 
   // ---------- step 4: confirm ----------
   if (step === "confirm") {
-    const projection = totals.exp !== null ? applyExp(player.character, totals.exp, reqFor) : null;
+    const b = parseDraft(before);
+    const beforeOk = !!b.state && !b.error;
+    const projection = totals.exp !== null && b.state && !b.error ? applyExp(b.state, totals.exp, reqFor) : null;
     return (
       <div className="screen">
         <button className="link" onClick={() => setStep("details")}>‹ Back</button>
@@ -196,12 +199,17 @@ export default function Buy() {
             <dt>Method</dt><dd>{methodLabel(method)}</dd>
             {!oneTime && <><dt>Levels</dt><dd className="mono">{current} → {target} (+{plan.levelsGained})</dd></>}
             <dt>Cost</dt><dd className="mono">{fmt(totals.cost)}{totals.cost === null && <span className="muted"> unknown</span>}</dd>
-            <dt>Expected EXP</dt><dd className="mono">{totals.exp !== null ? `+${fmt(totals.exp)}` : "unknown"}</dd>
+            <dt>Expected XP</dt><dd className="mono">{totals.exp !== null ? `+${fmt(totals.exp)}` : "unknown"}</dd>
             {projection?.status === "exact" && projection.state && (
-              <><dt>Expected result</dt><dd className="mono">Level {projection.state.level}, {fmt(projection.state.exp)} EXP</dd></>
+              <><dt>Expected result</dt><dd className="mono">Level {projection.state.level}, {fmt(projection.state.exp)} XP</dd></>
             )}
           </dl>
           {plan.usesUnverified && <Notice tone="info">Based partly on unverified data.</Notice>}
+        </Card>
+        <Card title="Your stats right now">
+          <p className="hint">Check your game home screen <b>before buying</b>. XP from missions and hacks changes it, so update these if they're different.</p>
+          <CharacterForm draft={before} onChange={setBefore} />
+          {b.error && <Notice tone="bad">{b.error}</Notice>}
         </Card>
         <div className="field">
           <label htmlFor="notes">Notes (optional)</label>
@@ -209,8 +217,8 @@ export default function Buy() {
         </div>
         <Notice tone="warn">Buy it in the game first. Nothing is recorded until you confirm and enter your new stats.</Notice>
         <div className="sticky-actions">
-          <button className="btn primary grow" onClick={() => {
-            setAfter({ level: String(player.character.level), exp: "", required: "" });
+          <button className="btn primary grow" disabled={!beforeOk} onClick={() => {
+            setAfter({ level: before.level, exp: "", required: before.required });
             setStep("after");
           }}>I bought it in the game</button>
         </div>
@@ -220,13 +228,14 @@ export default function Buy() {
 
   // ---------- step 5: new character stats ----------
   if (step === "after") {
+    const beforeState = parseDraft(before).state ?? player.character;
     const parsed = parseDraft(after);
-    const inf = parsed.state && !parsed.error ? inferExpGained(player.character, parsed.state, reqFor) : null;
+    const inf = parsed.state && !parsed.error ? inferExpGained(beforeState, parsed.state, reqFor) : null;
 
     async function save() {
       if (!parsed.state || parsed.error) { setErr(parsed.error); return; }
       const res = buildRecord({
-        plan: plan!, entered, before: player.character, after: parsed.state, keygenLevel: method === "download" ? keygen : null,
+        plan: plan!, entered, before: beforeState, after: parsed.state, keygenLevel: method === "download" ? keygen : null,
         kb: app.kb, reqFor, contributor: app.user.username, notes, now: new Date().toISOString(), newId
       });
       if (res.inference.status === "invalid") { setErr(res.inference.error ?? "Check the numbers"); return; }
@@ -250,19 +259,19 @@ export default function Buy() {
       <div className="screen">
         <button className="link" onClick={() => setStep("confirm")}>‹ Back</button>
         <h1>Your new stats</h1>
-        <p className="lead">Type exactly what the game shows now. Before: level {player.character.level}, {fmt(player.character.exp)}/{player.character.required !== null ? fmt(player.character.required) : "?"} EXP.</p>
+        <p className="lead">Type exactly what your game home screen shows now. Before: LVL {beforeState.level}, XP {fmt(beforeState.exp)} / {fmt(beforeState.required)}.</p>
         <Card>
           <CharacterForm draft={after} onChange={setAfter} autoFocus />
           {parsed.error && (after.exp !== "") && <Notice tone="bad">{parsed.error}</Notice>}
           {inf?.status === "exact" && (
             <Notice tone="good">
-              <b>+{fmt(inf.exp)} EXP earned</b>
+              <b>+{fmt(inf.exp)} XP earned</b>
               <ul className="tight">{inf.breakdown.map((b, i) => <li key={i}>{fmt(b.amount)} — {b.note}</li>)}</ul>
               {totals.exp !== null && inf.exp !== totals.exp && <div>Expected +{fmt(totals.exp)}. The difference will be flagged.</div>}
             </Notice>
           )}
           {inf?.status === "incomplete" && (
-            <Notice tone="warn">At least {fmt(inf.atLeast)} EXP. Exact amount unknown because the EXP needed for level {inf.missingLevels.join(", ")} isn't known.</Notice>
+            <Notice tone="warn">At least {fmt(inf.atLeast)} XP. Exact amount unknown because the XP needed for level {inf.missingLevels.join(", ")} isn't known.</Notice>
           )}
           {inf?.status === "invalid" && <Notice tone="bad">{inf.error}</Notice>}
         </Card>
@@ -298,7 +307,7 @@ export default function Buy() {
         <dl className="summary">
           <dt>{entry.name}</dt><dd className="mono">{oneTime ? "Purchased" : `${r.record.fromLevel} → ${r.record.toLevel}`}</dd>
           <dt>Cost</dt><dd className="mono">{fmt(r.record.cost)}</dd>
-          <dt>EXP earned</dt><dd className="mono">{r.record.expEarned !== null ? `+${fmt(r.record.expEarned)}` : "not exact"}</dd>
+          <dt>XP earned</dt><dd className="mono">{r.record.expEarned !== null ? `+${fmt(r.record.expEarned)}` : "not exact"}</dd>
           <dt>Confidence</dt><dd>{CONF[r.record.confidence]}</dd>
         </dl>
       </Card>

@@ -1,4 +1,4 @@
-// Purchase planning: what will this buy cost, how much EXP should it give,
+// Purchase planning: what will this buy cost, how much XP should it give,
 // which numbers are missing, and is it even allowed.
 
 import { methodsFor } from "./catalog";
@@ -82,7 +82,7 @@ export function planPurchase(input: PlanInput): PurchasePlan {
     const exp = kb.oneTimeItemExp(entry.id);
     plan.lines.push({ fromLevel: 0, toLevel: 1, cost, exp, costSource: cost.value === null ? "missing" : "observed" });
     if (cost.value === null) plan.missing.push({ kind: "one_time_price", upgradeId: entry.id, fromLevel: 0, toLevel: 1, label: `${entry.name} price`, reason: missingFrom(cost) });
-    if (exp.value === null) plan.missing.push({ kind: "one_time_exp", upgradeId: entry.id, fromLevel: 0, toLevel: 1, label: `${entry.name} EXP reward`, reason: missingFrom(exp) });
+    if (exp.value === null) plan.missing.push({ kind: "one_time_exp", upgradeId: entry.id, fromLevel: 0, toLevel: 1, label: `${entry.name} XP reward`, reason: missingFrom(exp) });
     return finish(plan);
   }
 
@@ -101,7 +101,7 @@ export function planPurchase(input: PlanInput): PurchasePlan {
       const exp = kb.storeLevelExp(entry.id, l);
       plan.lines.push({ fromLevel: l - 1, toLevel: l, cost, exp, costSource: cost.value === null ? "missing" : "observed" });
       if (cost.value === null) plan.missing.push({ kind: "store_price", upgradeId: entry.id, fromLevel: l - 1, toLevel: l, label: `${entry.name} store price for level ${l}`, reason: missingFrom(cost) });
-      if (exp.value === null) plan.missing.push({ kind: "store_exp", upgradeId: entry.id, fromLevel: l - 1, toLevel: l, label: `${entry.name} store EXP for level ${l}`, reason: missingFrom(exp) });
+      if (exp.value === null) plan.missing.push({ kind: "store_exp", upgradeId: entry.id, fromLevel: l - 1, toLevel: l, label: `${entry.name} store XP for level ${l}`, reason: missingFrom(exp) });
     }
     if (entry.defensiveDiscount) plan.warnings.push("Defensive store discount (15%) applies. Prices here are the final prices the game charged; the rounding rule is not confirmed.");
     return finish(plan);
@@ -129,7 +129,7 @@ export function planPurchase(input: PlanInput): PurchasePlan {
   const exp = kb.downloadExp(entry.id, toLevel);
   plan.lines.push({ fromLevel, toLevel, cost, exp, costSource });
   if (cost.value === null) plan.missing.push({ kind: "download_price", upgradeId: entry.id, fromLevel, toLevel, label: `${entry.name} download cost ${fromLevel} → ${toLevel}`, reason: missingFrom(cost) });
-  if (exp.value === null) plan.missing.push({ kind: "download_exp", upgradeId: entry.id, fromLevel, toLevel, label: `${entry.name} download EXP at level ${toLevel}`, reason: missingFrom(exp) });
+  if (exp.value === null) plan.missing.push({ kind: "download_exp", upgradeId: entry.id, fromLevel, toLevel, label: `${entry.name} download XP at level ${toLevel}`, reason: missingFrom(exp) });
   return finish(plan);
 }
 

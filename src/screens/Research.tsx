@@ -190,14 +190,14 @@ type AnyObs =
   | { type: "level_req"; o: LevelRequirementObservation };
 
 function describe(a: AnyObs): string {
-  if (a.type === "level_req") return `Character level ${a.o.level} needs ${fmt(a.o.expRequired)} EXP`;
+  if (a.type === "level_req") return `Character level ${a.o.level} needs ${fmt(a.o.expRequired)} XP`;
   const e = getEntry(a.o.upgradeId);
   const lv = e.kind === "one_time" ? "" : a.o.toLevel - a.o.fromLevel > 1 || a.o.method === "download" ? ` ${a.o.fromLevel}→${a.o.toLevel}` : ` L${a.o.toLevel}`;
   if (a.type === "price") {
     const kind = a.o.costType === "component" ? "download component" : a.o.method === "download" ? "download total" : "store";
     return `${e.name}${lv} ${kind} cost ${fmt(a.o.cost)}${a.o.priceBasis === "before_discount" ? " (list price)" : ""}`;
   }
-  return `${e.name}${lv} ${a.o.method} EXP ${fmt(a.o.exp)}${a.o.expBasis === "per_transaction" && a.o.method === "store" ? " (combined)" : ""} · ${a.o.source}`;
+  return `${e.name}${lv} ${a.o.method} XP ${fmt(a.o.exp)}${a.o.expBasis === "per_transaction" && a.o.method === "store" ? " (combined)" : ""} · ${a.o.source}`;
 }
 
 function Observations() {
@@ -290,13 +290,13 @@ type AddKind = "store_price" | "store_list_price" | "store_exp" | "download_tota
 const ADD_LABEL: Record<AddKind, string> = {
   store_price: "Store price (what you paid)",
   store_list_price: "Store list price before discount",
-  store_exp: "Store EXP for one level",
+  store_exp: "Store XP for one level",
   download_total: "Download total cost",
   download_component: "Download cost component (one level)",
-  download_exp: "Download EXP",
+  download_exp: "Download XP",
   one_time_price: "One-time item price",
-  one_time_exp: "One-time item EXP",
-  level_req: "Character level EXP requirement"
+  one_time_exp: "One-time item XP",
+  level_req: "XP needed for a character level"
 };
 
 function choicesFor(kind: AddKind) {
@@ -342,7 +342,7 @@ function AddObservation({ onAdded }: { onAdded: () => void }) {
       if (isChar) {
         const lvl = parseWhole(toL);
         if (!lvl || lvl < 1) { setErr("Enter the character level"); return; }
-        if (v <= 0) { setErr("EXP needed must be more than 0"); return; }
+        if (v <= 0) { setErr("XP needed must be more than 0"); return; }
         setBusy(true);
         await contribute({ prices: [], exp: [], levelReqs: [{ ...base, level: lvl, expRequired: v }] });
       } else {
@@ -377,10 +377,10 @@ function AddObservation({ onAdded }: { onAdded: () => void }) {
 
   return (
     <Card title="Add an observation">
-      <p className="hint">For numbers you saw in the game outside the purchase flow — useful for high-level players. Enter exactly what the game shows.</p>
+      <p className="hint">For prices you saw in the game outside the purchase flow — useful for high-level players. Upgrade XP isn't shown by the game, so it's only worked out from purchases.</p>
       <label className="field">What did you see?
         <select className="input" value={kind} onChange={(e) => changeKind(e.target.value as AddKind)}>
-          {(Object.keys(ADD_LABEL) as AddKind[]).map((k) => <option key={k} value={k}>{ADD_LABEL[k]}</option>)}
+          {(Object.keys(ADD_LABEL) as AddKind[]).filter((k) => !k.endsWith("_exp")).map((k) => <option key={k} value={k}>{ADD_LABEL[k]}</option>)}
         </select>
       </label>
       {!isChar && (
@@ -396,7 +396,7 @@ function AddObservation({ onAdded }: { onAdded: () => void }) {
           <NumberField compact label={isChar ? "Character level" : isRange ? "To level" : "Level bought"} value={toL} onChange={setToL} />
         </div>
       )}
-      <NumberField label={kind.endsWith("exp") ? "EXP" : isChar ? "EXP needed for next level" : "Cost"} value={value} onChange={setValue} />
+      <NumberField label={kind.endsWith("exp") ? "XP" : isChar ? "XP needed for next level" : "Cost"} value={value} onChange={setValue} />
       {isDownload && <NumberField compact label="Your Keygen level (optional)" value={keygen} onChange={setKeygen} />}
       <div className="field">
         <label htmlFor="obs-notes">Notes / evidence (optional)</label>

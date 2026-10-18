@@ -1,6 +1,7 @@
+import { useId } from "react";
 import { validateCharacter } from "../domain/exp";
 import type { CharacterState } from "../domain/types";
-import { NumberField, parseWhole } from "./components";
+import { parseWhole } from "./components";
 
 export interface CharDraft { level: string; exp: string; required: string }
 
@@ -10,24 +11,42 @@ export const draftFrom = (c: CharacterState | null | undefined): CharDraft => ({
   required: c?.required != null ? String(c.required) : ""
 });
 
-/** Returns a parsed state or an error message. Empty "required" is allowed (unknown). */
+/** Parses the three numbers from the game's home screen: LVL 24 · XP 5870 / 17993. */
 export function parseDraft(d: CharDraft): { state: CharacterState | null; error: string | null } {
   const level = parseWhole(d.level);
   const exp = parseWhole(d.exp);
-  const required = d.required.trim() === "" ? null : parseWhole(d.required);
-  if (level === null) return { state: null, error: "Enter your character level" };
-  if (exp === null) return { state: null, error: "Enter your current EXP (0 if none)" };
-  if (d.required.trim() !== "" && required === null) return { state: null, error: "Next-level EXP must be a whole number" };
+  const required = parseWhole(d.required);
+  if (level === null) return { state: null, error: "Enter your level (LVL)" };
+  if (exp === null) return { state: null, error: "Enter your XP (the left number)" };
+  if (required === null) return { state: null, error: "Enter the XP needed (the right number)" };
   const state = { level, exp, required };
   return { state, error: validateCharacter(state) };
 }
 
+/** Mirrors the game's home screen so the numbers can be copied straight across. */
 export function CharacterForm({ draft, onChange, autoFocus }: { draft: CharDraft; onChange: (d: CharDraft) => void; autoFocus?: boolean }) {
+  const id = useId();
+  const field = (k: keyof CharDraft, label: string, extra?: { autoFocus?: boolean; placeholder?: string }) => (
+    <input
+      id={`${id}-${k}`} aria-label={label} className="input mono" inputMode="numeric" pattern="[0-9]*" autoComplete="off"
+      value={draft[k]} placeholder={extra?.placeholder} autoFocus={extra?.autoFocus}
+      onChange={(e) => onChange({ ...draft, [k]: e.target.value.replace(/[^\d]/g, "") })}
+    />
+  );
   return (
-    <div className="grid3">
-      <NumberField label="Level" value={draft.level} onChange={(v) => onChange({ ...draft, level: v })} autoFocus={autoFocus} compact />
-      <NumberField label="EXP now" value={draft.exp} onChange={(v) => onChange({ ...draft, exp: v })} compact />
-      <NumberField label="EXP for next" value={draft.required} onChange={(v) => onChange({ ...draft, required: v })} placeholder="if shown" compact />
+    <div className="char-form">
+      <div className="char-lvl">
+        <label htmlFor={`${id}-level`}>LVL</label>
+        {field("level", "Level", { autoFocus, placeholder: "24" })}
+      </div>
+      <div className="char-xp">
+        <label htmlFor={`${id}-exp`}>XP progress</label>
+        <div className="char-xp-row">
+          {field("exp", "XP", { placeholder: "5870" })}
+          <span className="slash" aria-hidden="true">/</span>
+          {field("required", "XP needed", { placeholder: "17993" })}
+        </div>
+      </div>
     </div>
   );
 }

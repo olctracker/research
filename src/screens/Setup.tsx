@@ -45,7 +45,7 @@ export default function Setup({ onDone }: { onDone: () => void }) {
 
       <Card title="Character">
         <CharacterForm draft={char} onChange={setChar} />
-        <div className="hint">“EXP for next” is the total EXP your current level needs. Leave it blank if you can't see it.</div>
+        <div className="hint">Copy these from your game home screen: LVL, then XP progress (for example 5870 / 17993).</div>
       </Card>
 
       {GROUPS.map((g) => (

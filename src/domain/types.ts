@@ -53,8 +53,8 @@ export interface PriceObservation {
 }
 
 /**
- * per_level        – EXP for one store level (or one-time item)
- * per_transaction  – EXP for a whole transaction (downloads, or a multi-level store buy we could not split)
+ * per_level        – XP for one store level (or one-time item)
+ * per_transaction  – XP for a whole transaction (downloads, or a multi-level store buy we could not split)
  */
 export type ExpBasis = "per_level" | "per_transaction";
 
@@ -81,7 +81,7 @@ export interface ExpObservation {
   purchaseId: string | null;
 }
 
-/** "Character level N needs X EXP to reach level N+1." */
+/** "Character level N needs X XP to reach level N+1." */
 export interface LevelRequirementObservation {
   id: string;
   level: number;
@@ -94,9 +94,9 @@ export interface LevelRequirementObservation {
 
 export interface CharacterState {
   level: number;
-  /** EXP inside the current level. */
+  /** XP inside the current level. */
   exp: number;
-  /** EXP needed to go from this level to the next. null if the player did not enter it. */
+  /** XP needed to go from this level to the next. null if the player did not enter it. */
   required: number | null;
 }
 

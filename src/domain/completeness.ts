@@ -10,12 +10,12 @@ export type SeriesKind = "store_price" | "store_exp" | "download_component" | "d
 
 export const SERIES_LABEL: Record<SeriesKind, string> = {
   store_price: "Store price",
-  store_exp: "Store EXP",
+  store_exp: "Store XP",
   download_component: "Download cost (per-level component)",
-  download_exp: "Download EXP (by destination)",
+  download_exp: "Download XP (by destination)",
   one_time_price: "Price",
-  one_time_exp: "EXP reward",
-  level_req: "Character EXP needed"
+  one_time_exp: "XP reward",
+  level_req: "Character XP needed"
 };
 
 export interface DataPoint {

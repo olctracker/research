@@ -67,7 +67,7 @@ export function buildRecord(input: RecordInput): RecordResult {
     });
   }
 
-  // ---- EXP the player typed in ----
+  // ---- XP the player typed in ----
   const expFor = (fromLevel: number, toLevel: number) =>
     entered[missingKey({ kind: expKind, fromLevel, toLevel })];
   for (const line of plan.lines) {
@@ -76,7 +76,7 @@ export function buildRecord(input: RecordInput): RecordResult {
     if (v === undefined) continue;
     candidates.push({
       type: "exp", checked: true,
-      label: `${plan.entry.name} ${plan.method === "download" ? "download" : "store"} EXP at level ${line.toLevel}: ${v}`,
+      label: `${plan.entry.name} ${plan.method === "download" ? "download" : "store"} XP at level ${line.toLevel}: ${v}`,
       why: "You entered it from the game",
       data: {
         ...base, id: newId(), upgradeId: plan.entry.id, method: plan.method, fromLevel: line.fromLevel, toLevel: line.toLevel,
@@ -85,10 +85,10 @@ export function buildRecord(input: RecordInput): RecordResult {
     });
   }
 
-  // ---- EXP worked out from the character screen ----
+  // ---- XP worked out from the character screen ----
   if (inference.status === "invalid") warnings.push(inference.error ?? "Character numbers don't add up.");
   if (inference.status === "incomplete") {
-    warnings.push(`Can't calculate exact EXP: the EXP needed for character level ${inference.missingLevels.join(", ")} is unknown. At least ${inference.atLeast} EXP was earned.`);
+    warnings.push(`Can't calculate exact XP: the XP needed for character level ${inference.missingLevels.join(", ")} is unknown. At least ${inference.atLeast} XP was earned.`);
   }
   if (inference.status === "exact" && inference.exp !== null) {
     const gained = inference.exp;
@@ -97,19 +97,19 @@ export function buildRecord(input: RecordInput): RecordResult {
 
     if (unknownLines.length === 0) {
       if (knownSum !== gained) {
-        warnings.push(`Your character gained ${gained} EXP, but the known rewards add up to ${knownSum}. Something may be wrong (another EXP source, a typo, or a bad record). Nothing was inferred.`);
+        warnings.push(`Your character gained ${gained} XP, but the known rewards add up to ${knownSum}. Something may be wrong (another XP source, a typo, or a bad record). Nothing was inferred.`);
       }
     } else if (unknownLines.length === 1) {
       const line = unknownLines[0];
       const value = gained - knownSum;
       if (value < 0) {
-        warnings.push(`Known rewards (${knownSum}) are more than the EXP your character gained (${gained}). Nothing was inferred.`);
+        warnings.push(`Known rewards (${knownSum}) are more than the XP your character gained (${gained}). Nothing was inferred.`);
       } else {
         const single = plan.lines.length === 1;
         candidates.push({
           type: "exp", checked: true,
-          label: `${plan.entry.name} ${plan.method === "download" ? "download" : "store"} EXP at level ${line.toLevel}: ${value}`,
-          why: single ? `Worked out from your character EXP (+${gained})` : `Worked out: +${gained} total minus ${knownSum} from known levels`,
+          label: `${plan.entry.name} ${plan.method === "download" ? "download" : "store"} XP at level ${line.toLevel}: ${value}`,
+          why: single ? `Worked out from your character XP (+${gained})` : `Worked out: +${gained} total minus ${knownSum} from known levels`,
           data: {
             ...base, id: newId(), upgradeId: plan.entry.id, method: plan.method, fromLevel: line.fromLevel, toLevel: line.toLevel,
             exp: value, expBasis: plan.method === "download" ? "per_transaction" : "per_level", source: single ? "inferred" : "derived"
@@ -120,8 +120,8 @@ export function buildRecord(input: RecordInput): RecordResult {
       // Several store levels unknown: we only know their total. Keep it as one transaction observation.
       candidates.push({
         type: "exp", checked: true,
-        label: `${plan.entry.name} store EXP for levels ${plan.fromLevel + 1}–${plan.toLevel} combined: ${gained}`,
-        why: "Worked out from your character EXP. Individual levels can't be split yet.",
+        label: `${plan.entry.name} store XP for levels ${plan.fromLevel + 1}–${plan.toLevel} combined: ${gained}`,
+        why: "Worked out from your character XP. Individual levels can't be split yet.",
         data: {
           ...base, id: newId(), upgradeId: plan.entry.id, method: plan.method, fromLevel: plan.fromLevel, toLevel: plan.toLevel,
           exp: gained, expBasis: "per_transaction", source: "inferred"
@@ -137,7 +137,7 @@ export function buildRecord(input: RecordInput): RecordResult {
     const already = known.value === s.required && isVerified(known.reliability);
     candidates.push({
       type: "level_req", checked: !already,
-      label: `Character level ${s.level} needs ${s.required.toLocaleString()} EXP`,
+      label: `Character level ${s.level} needs ${s.required.toLocaleString()} XP`,
       why: known.value === null ? (known.reliability === "conflict" ? "Conflicting records" : "Not in the database yet")
         : known.value === s.required ? `Repeats a known value (${RELIABILITY_LABEL[known.reliability]})` : `Database says ${known.value}`,
       data: { id: newId(), level: s.level, expRequired: s.required, contributor, createdAt: now, status: "observed", notes: "" }
@@ -163,10 +163,10 @@ export function buildRecord(input: RecordInput): RecordResult {
     const step = plan.method === "download" ? `${l.fromLevel}→${l.toLevel}` : `L${l.toLevel}`;
     return [
       `Cost ${step}: ${l.cost.value !== null ? (l.costSource === "component_sum" ? "estimate from components" : `${RELIABILITY_LABEL[l.cost.reliability]} (${l.cost.count})`) : "entered by you or missing"}`,
-      `EXP ${step}: ${l.exp.value !== null ? `${RELIABILITY_LABEL[l.exp.reliability]} (${l.exp.count})` : "entered/inferred or missing"}`
+      `XP ${step}: ${l.exp.value !== null ? `${RELIABILITY_LABEL[l.exp.reliability]} (${l.exp.count})` : "entered/inferred or missing"}`
     ];
   });
-  dataSources.push(`Character EXP: ${inference.status}`);
+  dataSources.push(`Character XP: ${inference.status}`);
 
   const record: PurchaseRecord = {
     id: purchaseId, createdAt: now, upgradeId: plan.entry.id, method: plan.method,

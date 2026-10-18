@@ -112,7 +112,7 @@ export default function Settings() {
         <div className="btn-col">
           <button className="btn" onClick={exportJson}>Everything (JSON)</button>
           <button className="btn" onClick={() => csv("prices", toCsv(observations.prices))} disabled={!observations.prices.length}>Price observations (CSV)</button>
-          <button className="btn" onClick={() => csv("exp", toCsv(observations.exp))} disabled={!observations.exp.length}>EXP observations (CSV)</button>
+          <button className="btn" onClick={() => csv("exp", toCsv(observations.exp))} disabled={!observations.exp.length}>XP observations (CSV)</button>
           <button className="btn" onClick={() => csv("level-requirements", toCsv(observations.levelReqs))} disabled={!observations.levelReqs.length}>Character level requirements (CSV)</button>
           <button className="btn" onClick={() => csv("purchases", toCsv(flattenPurchases(purchases)))} disabled={!purchases.length}>My purchase history (CSV)</button>
         </div>
@@ -120,7 +120,7 @@ export default function Settings() {
 
       <Card title="Coming later">
         <ul className="tight muted">
-          <li>Formula discovery (fit and test cost/EXP formulas)</li>
+          <li>Formula discovery (fit and test cost/XP formulas)</li>
           <li>Cheapest path to a target level</li>
           <li>Reboot planning — off until reboot rules are verified</li>
         </ul>

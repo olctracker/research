@@ -20,7 +20,7 @@ export default function Dashboard() {
   if (!player) return null;
   const c = player.character;
 
-  // For each level-based upgrade: is the NEXT store level's price/EXP known?
+  // For each level-based upgrade: is the NEXT store level's price/XP known?
   const nextInfo = (id: string) => {
     const e = getEntry(id);
     const lvl = player.levels[id] ?? e.startLevel;
@@ -59,7 +59,7 @@ export default function Dashboard() {
       >
         {editing ? (
           <>
-            <p className="hint">Use this when EXP changed from something other than an upgrade (hacks, missions). It won't count as purchase EXP.</p>
+            <p className="hint">Use this when XP changed from something other than an upgrade (hacks, missions). It won't count as purchase XP.</p>
             <CharacterForm draft={draft} onChange={setDraft} autoFocus />
             {err && <Notice tone="bad">{err}</Notice>}
             <button className="btn primary full" onClick={saveChar}>Save character</button>
@@ -68,11 +68,10 @@ export default function Dashboard() {
           <>
             <div className="exp-line">
               <span className="mono">{fmt(c.exp)}</span>
-              <span className="muted"> / {c.required !== null ? fmt(c.required) : "?"} EXP</span>
+              <span className="muted"> / {c.required !== null ? fmt(c.required) : "?"} XP</span>
               {c.required !== null && <span className="muted"> · {fmt(c.required - c.exp)} to level {c.level + 1}</span>}
             </div>
             <Progress value={c.exp} max={c.required} />
-            {c.required === null && <div className="hint">Add “EXP for next” to see progress.</div>}
           </>
         )}
       </Card>
@@ -106,7 +105,7 @@ export default function Dashboard() {
                       {!n ? <span className="badge rel-confirmed">Maxed</span> : (
                         <>
                           <span className={`dot ${known![0] ? "on" : ""}`} title={`Level ${n.level} price ${known![0] ? "known" : "unknown"}`} />
-                          <span className={`dot ${known![1] ? "on" : ""}`} title={`Level ${n.level} EXP ${known![1] ? "known" : "unknown"}`} />
+                          <span className={`dot ${known![1] ? "on" : ""}`} title={`Level ${n.level} XP ${known![1] ? "known" : "unknown"}`} />
                           {unverified && <span className="unv" title="Uses unverified data">!</span>}
                         </>
                       )}
@@ -117,7 +116,7 @@ export default function Dashboard() {
             </ul>
           </div>
         ))}
-        <div className="hint legend">Dots: next store level's <span className="dot on" /> price and <span className="dot on" /> EXP are known · <span className="unv">!</span> only seen once</div>
+        <div className="hint legend">Dots: next store level's <span className="dot on" /> price and <span className="dot on" /> XP are known · <span className="unv">!</span> only seen once</div>
       </Card>
 
       <Card title="One-time purchases">
@@ -144,7 +143,7 @@ export default function Dashboard() {
                 </div>
                 <div className="right">
                   <div className="mono">{fmt(p.cost)}</div>
-                  <div className="hint">{p.expEarned !== null ? `+${fmt(p.expEarned)} EXP` : "EXP ?"}</div>
+                  <div className="hint">{p.expEarned !== null ? `+${fmt(p.expEarned)} XP` : "XP ?"}</div>
                 </div>
               </li>
             ))}

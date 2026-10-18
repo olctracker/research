@@ -24,7 +24,7 @@ export default function History() {
       <div className="stat-row">
         <div><div className="stat mono">{purchases.length}</div><div className="hint">purchases</div></div>
         <div><div className="stat mono">{fmt(total)}</div><div className="hint">known spend</div></div>
-        <div><div className="stat mono">{fmt(totalExp)}</div><div className="hint">exact EXP</div></div>
+        <div><div className="stat mono">{fmt(totalExp)}</div><div className="hint">exact XP</div></div>
       </div>
       {err && <Notice tone="bad">{err}</Notice>}
       {purchases.length === 0 && <p className="muted">Nothing recorded yet.</p>}
@@ -40,7 +40,7 @@ export default function History() {
               </div>
               <div className="right">
                 <div className="mono">{fmt(p.cost)}</div>
-                <div className="hint">{p.expEarned !== null ? `+${fmt(p.expEarned)} EXP` : "EXP ?"}</div>
+                <div className="hint">{p.expEarned !== null ? `+${fmt(p.expEarned)} XP` : "XP ?"}</div>
               </div>
             </button>
             {p.confidence !== "exact" && <span className={`badge ${p.confidence === "incomplete" ? "rel-conflict" : "rel-once"}`}>{CONF[p.confidence]}</span>}
@@ -49,7 +49,7 @@ export default function History() {
                 <dl className="summary">
                   <dt>Before</dt><dd className="mono">Lv {p.before.level} · {fmt(p.before.exp)}/{fmt(p.before.required)}</dd>
                   <dt>After</dt><dd className="mono">Lv {p.after.level} · {fmt(p.after.exp)}/{fmt(p.after.required)}</dd>
-                  <dt>Expected EXP</dt><dd className="mono">{fmt(p.expExpected)}</dd>
+                  <dt>Expected XP</dt><dd className="mono">{fmt(p.expExpected)}</dd>
                   <dt>Cost source</dt><dd>{p.costSource}</dd>
                   {p.keygenLevel !== null && <><dt>Keygen</dt><dd className="mono">{p.keygenLevel}</dd></>}
                   {p.notes && <><dt>Notes</dt><dd>{p.notes}</dd></>}

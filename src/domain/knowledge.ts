@@ -86,7 +86,7 @@ export class Knowledge {
     this.dlComponent = group(finals, (p) => (p.method === "download" && p.costType === "component" ? key(p.upgradeId, p.toLevel) : null));
     this.oneTimePrice = group(finals, (p) => (p.costType === "one_time" ? p.upgradeId : null));
     this.perLevelExp = group(obs.exp, (e) => (e.expBasis === "per_level" && e.method === "store" ? key(e.upgradeId, e.toLevel) : null));
-    // Download EXP depends on the destination level only (known mechanic), so key by destination.
+    // Download XP depends on the destination level only (known mechanic), so key by destination.
     this.txnExp = group(obs.exp, (e) => (e.method === "download" ? key(e.upgradeId, e.toLevel) : null));
     this.reqs = group(obs.levelReqs, (r) => String(r.level));
   }
@@ -116,7 +116,7 @@ export class Knowledge {
     return consensus((this.reqs.get(String(level)) ?? []).map(fromReq));
   }
 
-  /** Requirement lookup for EXP inference: returns a number only when usable. */
+  /** Requirement lookup for XP inference: returns a number only when usable. */
   reqFn(): (level: number) => number | null {
     return (level) => this.levelRequirement(level).value;
   }

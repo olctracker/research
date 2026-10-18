@@ -1,6 +1,6 @@
 // Starting observations from the project spec (Example A: Spam store levels 2–5).
 // They are ordinary "observed once" records, not confirmed rules.
-// Example B (download cost components 100/200/300/400, 5 EXP) is NOT seeded because the
+// Example B (download cost components 100/200/300/400, 5 XP) is NOT seeded because the
 // software it came from wasn't recorded. Record it again with the software name.
 // Keep in sync with supabase/migrations/0002_seed.sql.
 

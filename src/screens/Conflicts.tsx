@@ -6,7 +6,7 @@ import { Card, fmt, Notice } from "../ui/components";
 
 type Row = PriceObservation | ExpObservation | LevelRequirementObservation;
 const fromPurchase = (r: Row) => "purchaseId" in r && !!r.purchaseId;
-const how = (r: Row) => ("source" in r && r.source !== "entered" ? (r.source === "inferred" ? "worked out from EXP" : "derived") : null);
+const how = (r: Row) => ("source" in r && r.source !== "entered" ? (r.source === "inferred" ? "worked out from XP" : "derived") : null);
 
 export default function Conflicts() {
   const { conflicts, isAdmin, repo, reloadObservations } = useApp();
