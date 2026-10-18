@@ -90,7 +90,7 @@ export default function Settings() {
 
   return (
     <div className="screen">
-      <h1>More</h1>
+      <h1>Settings</h1>
 
       <Card title="Account">
         <dl className="summary">
@@ -98,7 +98,7 @@ export default function Settings() {
           <dt>Role</dt><dd>{isAdmin ? "Admin" : "Player"}</dd>
           <dt>Storage</dt><dd>{repo.mode === "supabase" ? "Shared database" : "This browser only (test mode)"}</dd>
         </dl>
-        <button className="btn ghost full" onClick={() => go("setup")}>Edit game state</button>
+        <button className="btn ghost full" onClick={() => go("device")}>Open My Device</button>
       </Card>
 
       <Card title="Change PIN"><ChangePin /></Card>

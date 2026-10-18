@@ -133,4 +133,4 @@ export class Knowledge {
   }
 }
 
-export const methodLabel = (m: Method) => (m === "store" ? "Store" : "Download");
+export const methodLabel = (m: Method) => (m === "store" ? "Store" : "Keygen");

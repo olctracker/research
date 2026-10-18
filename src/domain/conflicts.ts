@@ -31,14 +31,14 @@ const priceKey = (p: PriceObservation): [string, string, string] | null => {
   const list = p.priceBasis === "before_discount" ? " (list price before discount)" : "";
   if (p.costType === "one_time") return [`p1|${p.upgradeId}|${p.priceBasis}`, e.name, `Price${list}`];
   if (p.method === "store") return [`ps|${p.upgradeId}|${p.toLevel}|${p.priceBasis}`, e.name, `Store price · level ${p.toLevel}${list}`];
-  if (p.costType === "component") return [`pc|${p.upgradeId}|${p.toLevel}|${p.priceBasis}`, e.name, `Download cost component · level ${p.toLevel}`];
-  return [`pd|${p.upgradeId}|${p.fromLevel}|${p.toLevel}|${p.priceBasis}`, e.name, `Download total · ${p.fromLevel} → ${p.toLevel}`];
+  if (p.costType === "component") return [`pc|${p.upgradeId}|${p.toLevel}|${p.priceBasis}`, e.name, `Keygen cost component · level ${p.toLevel}`];
+  return [`pd|${p.upgradeId}|${p.fromLevel}|${p.toLevel}|${p.priceBasis}`, e.name, `Keygen price · ${p.fromLevel} → ${p.toLevel}`];
 };
 
 const expKey = (x: ExpObservation): [string, string, string] => {
   const e = getEntry(x.upgradeId);
   if (e.kind === "one_time") return [`x1|${x.upgradeId}`, e.name, "XP reward"];
-  if (x.method === "download") return [`xd|${x.upgradeId}|${x.toLevel}`, e.name, `Download XP · destination level ${x.toLevel}`];
+  if (x.method === "download") return [`xd|${x.upgradeId}|${x.toLevel}`, e.name, `Keygen XP · level ${x.toLevel}`];
   if (x.expBasis === "per_transaction") return [`xt|${x.upgradeId}|${x.fromLevel}|${x.toLevel}`, e.name, `Store XP · levels ${x.fromLevel + 1}–${x.toLevel} combined`];
   return [`xs|${x.upgradeId}|${x.toLevel}`, e.name, `Store XP · level ${x.toLevel}`];
 };

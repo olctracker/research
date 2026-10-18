@@ -123,7 +123,7 @@ export function planPurchase(input: PlanInput): PurchasePlan {
       const sum = parts.reduce((s, p) => s + (p.value as number), 0);
       cost = { value: sum, reliability: "observed_once", count: 0, values: [sum], disputed: false, ids: parts.flatMap((p) => p.ids) };
       costSource = "component_sum";
-      plan.warnings.push("Download cost is estimated by adding per-level cost components. Record the real total to confirm.");
+      plan.warnings.push("Keygen cost is estimated by adding per-level cost components. Record the real total to confirm.");
     }
   }
   const exp = kb.downloadExp(entry.id, toLevel);

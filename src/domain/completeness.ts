@@ -11,8 +11,8 @@ export type SeriesKind = "store_price" | "store_exp" | "download_component" | "d
 export const SERIES_LABEL: Record<SeriesKind, string> = {
   store_price: "Store price",
   store_exp: "Store XP",
-  download_component: "Download cost (per-level component)",
-  download_exp: "Download XP (by destination)",
+  download_component: "Keygen price (component)",
+  download_exp: "Keygen XP",
   one_time_price: "Price",
   one_time_exp: "XP reward",
   level_req: "Character XP needed"
@@ -112,7 +112,7 @@ export function summarize(rows: SeriesCoverage[]) {
 export const OPEN_QUESTIONS: { title: string; detail: string }[] = [
   { title: "Defensive store discount rounding", detail: "15% discount is known; whether the game rounds up, down or to nearest is unconfirmed. Record final prices and, when you can see it, the list price." },
   { title: "Keygen download rule", detail: "Keygen level ≥ destination level is the working rule. Report any download that contradicts it." },
-  { title: "Download cost structure", detail: "Is a download total always the sum of per-level components? Record real totals to test this." },
+  { title: "Keygen multi-level jumps", detail: "Purchase records one level at a time. Can Keygen jump several levels in one buy, and does that cost the sum of each level? Not supported yet." },
   { title: "Caps on uncapped software", detail: "No maximum is known for defensive, offensive, virus software or Keygen." },
   { title: "Reboot rules", detail: "Reboot costs and effects are not recorded yet. Reboot planning stays disabled." }
 ];

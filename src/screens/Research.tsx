@@ -150,7 +150,7 @@ function Missing() {
             <option value="character">Character</option>
           </select></label>
           <label>Method<select className="input" value={method} onChange={(e) => setMethod(e.target.value as "all")}>
-            <option value="all">All</option><option value="store">Store</option><option value="download">Download</option>
+            <option value="all">All</option><option value="store">Store</option><option value="download">Keygen</option>
           </select></label>
           <label>Data type<select className="input" value={series} onChange={(e) => setSeries(e.target.value as SeriesKind | "all")}>
             <option value="all">All</option>
@@ -291,9 +291,9 @@ const ADD_LABEL: Record<AddKind, string> = {
   store_price: "Store price (what you paid)",
   store_list_price: "Store list price before discount",
   store_exp: "Store XP for one level",
-  download_total: "Download total cost",
-  download_component: "Download cost component (one level)",
-  download_exp: "Download XP",
+  download_total: "Keygen price",
+  download_component: "Keygen cost component (one level)",
+  download_exp: "Keygen XP",
   one_time_price: "One-time item price",
   one_time_exp: "One-time item XP",
   level_req: "XP needed for a character level"

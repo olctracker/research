@@ -108,3 +108,30 @@ export function applyExp(start: CharacterState, gain: number, reqFor: ReqFn): Ex
   }
   return { status: "exact", state: { level, exp, required: req }, missingLevels: [], levelsGained: level - start.level };
 }
+
+export interface GainResult {
+  level: number;
+  exp: number;
+  /** XP needed at the new level, or null if nobody has recorded it yet (ask the player). */
+  required: number | null;
+  levelsGained: number;
+}
+
+/**
+ * Adds XP to a character the way the game does: when XP reaches the level's limit the
+ * character levels up and the leftover carries over (20 at 234/589 + 400 → 21 at 45).
+ * If the next level's requirement is unknown we stop there and return required = null;
+ * once the player types it in, call again with gain 0 to finish any further level-ups.
+ */
+export function addXp(start: CharacterState, gain: number, reqFor: ReqFn): GainResult {
+  if (start.required === null) throw new Error("Current XP needed is required");
+  let level = start.level;
+  let exp = start.exp + gain;
+  let req: number | null = start.required;
+  while (req !== null && exp >= req) {
+    exp -= req;
+    level += 1;
+    req = reqFor(level);
+  }
+  return { level, exp, required: req, levelsGained: level - start.level };
+}

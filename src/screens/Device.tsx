@@ -7,15 +7,15 @@ import { Card, Notice, Stepper } from "../ui/components";
 
 const GROUPS: Category[] = ["core", "defensive", "offensive", "virus", "utility"];
 
-export default function Setup({ onDone }: { onDone: () => void }) {
+export default function Device({ onDone, first = false }: { onDone: () => void; first?: boolean }) {
   const { player, savePlayer, user } = useApp();
-  const first = !player?.setupComplete;
-  const [char, setChar] = useState(draftFrom(player?.character ?? { level: 1, exp: 0, required: null }));
+  const [char, setChar] = useState(draftFrom(player?.character));
   const [levels, setLevels] = useState<Record<string, number>>({ ...defaultLevels(), ...(player?.levels ?? {}) });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const setLevel = (id: string, v: number) => setLevels((l) => ({ ...l, [id]: v }));
+  const setLevel = (id: string, v: number) => { setSaved(false); setLevels((l) => ({ ...l, [id]: v })); };
 
   async function save() {
     const { state, error: e } = parseDraft(char);
@@ -28,23 +28,26 @@ export default function Setup({ onDone }: { onDone: () => void }) {
       alias: user.username, character: state, levels, setupComplete: true, updatedAt: new Date().toISOString()
     };
     setBusy(true);
-    try { await savePlayer(next); onDone(); }
+    try {
+      await savePlayer(next);
+      setError(null);
+      if (first) onDone(); else setSaved(true);
+    }
     catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setBusy(false); }
   }
 
   return (
     <div className="screen">
-      <h1>{first ? "Set up your game" : "Edit game state"}</h1>
+      <h1>{first ? "Set up your device" : "My Device"}</h1>
       <p className="lead">
         {first
           ? `Welcome, ${user.username}. Enter what your game shows right now — you don't have to start at level 1.`
-          : "Fix any numbers that are out of date. This doesn't create a purchase or any shared data."}
+          : "Keep this matching your game. Use it if you bought something without using Purchase, or your XP changed from missions and hacks. Changes here aren't counted as purchases."}
       </p>
 
-
       <Card title="Character">
-        <CharacterForm draft={char} onChange={setChar} />
+        <CharacterForm draft={char} onChange={(d) => { setSaved(false); setChar(d); }} />
         <div className="hint">Copy these from your game home screen: LVL, then XP progress (for example 5870 / 17993).</div>
       </Card>
 
@@ -80,8 +83,9 @@ export default function Setup({ onDone }: { onDone: () => void }) {
 
       {error && <Notice tone="bad">{error}</Notice>}
       <div className="sticky-actions">
-        {!first && <button className="btn ghost" onClick={onDone}>Cancel</button>}
-        <button className="btn primary grow" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save game state"}</button>
+        <button className="btn primary grow" disabled={busy} onClick={save}>
+          {busy ? "Saving…" : saved ? "Saved ✓" : first ? "Save and continue" : "Save my device"}
+        </button>
       </div>
     </div>
   );

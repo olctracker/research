@@ -3,7 +3,13 @@ import { getEntry } from "../domain/catalog";
 import { methodLabel } from "../domain/knowledge";
 import { useApp } from "../state";
 import { Card, fmt, Notice } from "../ui/components";
-import { CONF } from "./Buy";
+
+export const CONF: Record<string, string> = {
+  exact: "Exact",
+  uses_unverified: "Uses unverified data",
+  incomplete: "Incomplete",
+  estimate: "Estimate"
+};
 
 export default function History() {
   const { purchases, deletePurchase } = useApp();

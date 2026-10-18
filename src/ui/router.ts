@@ -1,8 +1,8 @@
 // Tiny hash router (#/home, #/buy …). Hash URLs work on GitHub Pages without server config.
 import { useEffect, useState } from "react";
 
-export type Route = "home" | "buy" | "history" | "research" | "settings" | "setup";
-const ROUTES: Route[] = ["home", "buy", "history", "research", "settings", "setup"];
+export type Route = "home" | "device" | "store" | "keygen" | "buy" | "history" | "data" | "research" | "settings";
+const ROUTES: Route[] = ["home", "device", "store", "keygen", "buy", "history", "data", "research", "settings"];
 
 function current(): Route {
   const r = location.hash.replace(/^#\/?/, "").split(/[/?]/)[0] as Route;

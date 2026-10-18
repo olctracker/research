@@ -3,7 +3,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
 import { CATALOG, getEntry, methodsFor, validateLevel } from "../src/domain/catalog";
-import { applyExp, inferExpGained } from "../src/domain/exp";
+import { addXp, applyExp, inferExpGained } from "../src/domain/exp";
+import { needsEntry, nextPriceRows } from "../src/domain/nextPrices";
+import { defaultLevels } from "../src/domain/catalog";
 import { consensus, Knowledge } from "../src/domain/knowledge";
 import { missingKey, planPurchase, totalsWithEntered } from "../src/domain/purchase";
 import { buildRecord } from "../src/domain/record";
@@ -338,3 +340,55 @@ describe("Admin conflict review", () => {
   });
 });
 
+
+describe("Next-level prices and XP carry-over", () => {
+  test("asks for the NEXT level's price (Firewall 4 → price for 5)", () => {
+    const levels = { ...defaultLevels(), firewall: 4 };
+    const rows = nextPriceRows(levels, new Knowledge(empty()), "store");
+    const fw = rows.find((r) => r.entry.id === "firewall")!;
+    assert.equal(fw.nextLevel, 5);
+    assert.equal(fw.status, "missing");
+  });
+
+  test("known prices aren't counted as missing; maxed and owned items are skipped", () => {
+    const levels = { ...defaultLevels(), spam: 1, botnet: 7, notepad: 1 };
+    const rows = nextPriceRows(levels, new Knowledge(SEED_OBSERVATIONS), "store");
+    assert.equal(rows.find((r) => r.entry.id === "spam")!.status, "known"); // spam 2 = 200 is seeded
+    assert.equal(rows.find((r) => r.entry.id === "botnet")!.status, "maxed");
+    assert.equal(rows.find((r) => r.entry.id === "notepad")!.status, "owned");
+    assert.equal(needsEntry(rows), rows.filter((r) => r.status === "missing").length);
+  });
+
+  test("keygen list only has downloadable software and respects Keygen level (proxy 6 → 7)", () => {
+    const levels = { ...defaultLevels(), proxy: 6, keygen: 7, firewall: 9 };
+    const rows = nextPriceRows(levels, new Knowledge(empty()), "download");
+    assert.equal(rows.some((r) => r.entry.id === "device" || r.entry.id === "keygen"), false);
+    const proxy = rows.find((r) => r.entry.id === "proxy")!;
+    assert.equal(proxy.nextLevel, 7);
+    assert.equal(proxy.status, "missing");
+    assert.equal(rows.find((r) => r.entry.id === "firewall")!.status, "keygen_low"); // needs Keygen 10
+  });
+
+  test("keygen price for the next level is used as an exact price by Purchase", () => {
+    const kb = new Knowledge({ ...empty(), prices: [P({ upgradeId: "proxy", method: "download", costType: "combined", fromLevel: 6, toLevel: 7, cost: 4200 })] });
+    const plan = planPurchase({ entry: getEntry("proxy"), method: "download", currentLevel: 6, targetLevel: 7, keygenLevel: 7, kb });
+    assert.equal(plan.totalCost, 4200);
+    assert.equal(nextPriceRows({ ...defaultLevels(), proxy: 6, keygen: 7 }, kb, "download").find((r) => r.entry.id === "proxy")!.status, "known");
+  });
+
+  test("XP over the limit levels up and carries the rest (20 at 234/589 + 400 → 21 at 45)", () => {
+    const r = addXp({ level: 20, exp: 234, required: 589 }, 400, (l) => (l === 21 ? 650 : null));
+    assert.deepEqual(r, { level: 21, exp: 45, required: 650, levelsGained: 1 });
+  });
+
+  test("unknown requirement at the new level is left for the player to fill in", () => {
+    const r = addXp({ level: 20, exp: 234, required: 589 }, 400, () => null);
+    assert.equal(r.level, 21);
+    assert.equal(r.exp, 45);
+    assert.equal(r.required, null);
+  });
+
+  test("staying under the limit just adds XP", () => {
+    assert.deepEqual(addXp({ level: 24, exp: 5870, required: 17993 }, 1, () => null), { level: 24, exp: 5871, required: 17993, levelsGained: 0 });
+  });
+});
