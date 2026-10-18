@@ -1,0 +1,182 @@
+// Shared mode: personal data and shared research live in Supabase.
+// Uses only the PUBLISHABLE key; Row Level Security in supabase/migrations decides
+// what each player may read or write.
+
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { CATALOG } from "../domain/catalog";
+import type {
+  ExpObservation, LevelRequirementObservation, ObservationSet, PlayerState, PriceObservation, PurchaseRecord
+} from "../domain/types";
+import { Contribution, Flag, ObservationType, Repository } from "./repository";
+
+type Row = Record<string, unknown>;
+const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+const TABLE: Record<ObservationType, string> = {
+  price: "price_observations", exp: "exp_observations", level_req: "level_requirement_observations"
+};
+
+function check<T>(res: { data: T; error: { message: string } | null }): T {
+  if (res.error) throw new Error(res.error.message);
+  return res.data;
+}
+
+const who = (r: Row) => (r.contributor_alias as string) || (r.contributor_id ? `player-${String(r.contributor_id).slice(0, 6)}` : "unknown");
+
+const toPrice = (r: Row): PriceObservation => ({
+  id: r.id as string, upgradeId: r.upgrade_id as string, method: r.method as PriceObservation["method"],
+  fromLevel: Number(r.from_level), toLevel: Number(r.to_level), cost: Number(r.cost),
+  costType: r.cost_type as PriceObservation["costType"], priceBasis: r.price_basis as PriceObservation["priceBasis"],
+  keygenLevel: num(r.keygen_level), contributor: who(r), createdAt: r.created_at as string,
+  status: r.status as PriceObservation["status"], notes: (r.notes as string) ?? "", purchaseId: (r.purchase_id as string) ?? null
+});
+const toExp = (r: Row): ExpObservation => ({
+  id: r.id as string, upgradeId: r.upgrade_id as string, method: r.method as ExpObservation["method"],
+  fromLevel: Number(r.from_level), toLevel: Number(r.to_level), exp: Number(r.exp),
+  expBasis: r.exp_basis as ExpObservation["expBasis"], source: r.source as ExpObservation["source"],
+  contributor: who(r), createdAt: r.created_at as string, status: r.status as ExpObservation["status"],
+  notes: (r.notes as string) ?? "", purchaseId: (r.purchase_id as string) ?? null
+});
+const toReq = (r: Row): LevelRequirementObservation => ({
+  id: r.id as string, level: Number(r.level), expRequired: Number(r.exp_required), contributor: who(r),
+  createdAt: r.created_at as string, status: r.status as LevelRequirementObservation["status"], notes: (r.notes as string) ?? ""
+});
+
+export class SupabaseRepository implements Repository {
+  readonly mode = "supabase" as const;
+  private sb: SupabaseClient;
+  private userId = "";
+  private alias = "";
+
+  constructor(url: string, publishableKey: string) {
+    this.sb = createClient(url, publishableKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  }
+
+  async init() {
+    const { data } = await this.sb.auth.getSession();
+    let session = data.session;
+    if (!session) {
+      const res = await this.sb.auth.signInAnonymously();
+      if (res.error) {
+        throw new Error(`Couldn't start a session: ${res.error.message}. In Supabase, turn on Authentication → Sign In / Providers → "Allow anonymous sign-ins".`);
+      }
+      session = res.data.session;
+    }
+    if (!session) throw new Error("Couldn't start a session. Please reload.");
+    this.userId = session.user.id;
+    const admin = await this.sb.from("app_admins").select("user_id").eq("user_id", this.userId).maybeSingle();
+    return { userId: this.userId, isAdmin: !!admin.data };
+  }
+
+  async loadPlayer(): Promise<PlayerState | null> {
+    const [prof, prog, lv] = await Promise.all([
+      this.sb.from("player_profiles").select("*").maybeSingle(),
+      this.sb.from("player_progress").select("*").maybeSingle(),
+      this.sb.from("player_upgrade_state").select("upgrade_id, level")
+    ]);
+    const p = check(prog) as Row | null;
+    this.alias = ((check(prof) as Row | null)?.alias as string) ?? "";
+    if (!p) return null;
+    const levels: Record<string, number> = Object.fromEntries(CATALOG.map((e) => [e.id, e.startLevel]));
+    for (const r of (check(lv) as Row[]) ?? []) levels[r.upgrade_id as string] = Number(r.level);
+    return {
+      alias: this.alias,
+      character: { level: Number(p.level), exp: Number(p.exp), required: num(p.required) },
+      levels, setupComplete: !!p.setup_complete, updatedAt: p.updated_at as string
+    };
+  }
+
+  async savePlayer(p: PlayerState) {
+    this.alias = p.alias;
+    check(await this.sb.from("player_profiles").upsert({ user_id: this.userId, alias: p.alias }));
+    check(await this.sb.from("player_progress").upsert({
+      user_id: this.userId, level: p.character.level, exp: p.character.exp, required: p.character.required,
+      setup_complete: p.setupComplete, updated_at: p.updatedAt
+    }));
+    check(await this.sb.from("player_upgrade_state").upsert(
+      Object.entries(p.levels).map(([upgrade_id, level]) => ({ user_id: this.userId, upgrade_id, level, updated_at: p.updatedAt })),
+      { onConflict: "user_id,upgrade_id" }
+    ));
+  }
+
+  async listPurchases(): Promise<PurchaseRecord[]> {
+    const rows = check(await this.sb.from("purchase_history").select("*").order("created_at", { ascending: false }).limit(1000)) as Row[];
+    return rows.map((r) => ({
+      id: r.id as string, createdAt: r.created_at as string, upgradeId: r.upgrade_id as string,
+      method: r.method as PurchaseRecord["method"], fromLevel: Number(r.from_level), toLevel: Number(r.to_level),
+      keygenLevel: num(r.keygen_level), cost: num(r.cost), costSource: r.cost_source as PurchaseRecord["costSource"],
+      expEarned: num(r.exp_earned), expExpected: num(r.exp_expected),
+      before: { level: Number(r.before_level), exp: Number(r.before_exp), required: num(r.before_required) },
+      after: { level: Number(r.after_level), exp: Number(r.after_exp), required: num(r.after_required) },
+      confidence: r.confidence as PurchaseRecord["confidence"], dataSources: (r.data_sources as string[]) ?? [],
+      notes: (r.notes as string) ?? ""
+    }));
+  }
+
+  async addPurchase(r: PurchaseRecord) {
+    check(await this.sb.from("purchase_history").insert({
+      id: r.id, user_id: this.userId, upgrade_id: r.upgradeId, method: r.method, from_level: r.fromLevel, to_level: r.toLevel,
+      keygen_level: r.keygenLevel, cost: r.cost, cost_source: r.costSource, exp_earned: r.expEarned, exp_expected: r.expExpected,
+      before_level: r.before.level, before_exp: r.before.exp, before_required: r.before.required,
+      after_level: r.after.level, after_exp: r.after.exp, after_required: r.after.required,
+      confidence: r.confidence, data_sources: r.dataSources, notes: r.notes, created_at: r.createdAt
+    }));
+  }
+
+  async deletePurchase(id: string) {
+    check(await this.sb.from("purchase_history").delete().eq("id", id));
+  }
+
+  /** Reads a whole table in pages of 1000 (Supabase's default row limit). */
+  private async all(table: string): Promise<Row[]> {
+    const out: Row[] = [];
+    for (let from = 0; ; from += 1000) {
+      const rows = check(await this.sb.from(table).select("*").order("created_at").range(from, from + 999)) as Row[];
+      out.push(...rows);
+      if (rows.length < 1000) return out;
+    }
+  }
+
+  async loadObservations(): Promise<ObservationSet> {
+    const [p, e, r] = await Promise.all([this.all(TABLE.price), this.all(TABLE.exp), this.all(TABLE.level_req)]);
+    return { prices: p.map(toPrice), exp: e.map(toExp), levelReqs: r.map(toReq) };
+  }
+
+  async contribute(c: Contribution) {
+    const alias = this.alias || null;
+    const meta = { contributor_id: this.userId, contributor_alias: alias, status: "observed" };
+    if (c.prices.length) check(await this.sb.from(TABLE.price).insert(c.prices.map((p) => ({
+      ...meta, id: p.id, upgrade_id: p.upgradeId, method: p.method, from_level: p.fromLevel, to_level: p.toLevel,
+      cost: p.cost, cost_type: p.costType, price_basis: p.priceBasis, keygen_level: p.keygenLevel,
+      notes: p.notes, purchase_id: p.purchaseId
+    }))));
+    if (c.exp.length) check(await this.sb.from(TABLE.exp).insert(c.exp.map((x) => ({
+      ...meta, id: x.id, upgrade_id: x.upgradeId, method: x.method, from_level: x.fromLevel, to_level: x.toLevel,
+      exp: x.exp, exp_basis: x.expBasis, source: x.source, notes: x.notes, purchase_id: x.purchaseId
+    }))));
+    if (c.levelReqs.length) check(await this.sb.from(TABLE.level_req).insert(c.levelReqs.map((x) => ({
+      ...meta, id: x.id, level: x.level, exp_required: x.expRequired, notes: x.notes
+    }))));
+  }
+
+  async flagObservation(type: ObservationType, id: string, reason: string) {
+    check(await this.sb.from("observation_flags").insert({ observation_type: type, observation_id: id, reason, flagged_by: this.userId }));
+  }
+
+  async listFlags(): Promise<Flag[]> {
+    const rows = check(await this.sb.from("observation_flags").select("*").order("created_at", { ascending: false }).limit(500)) as Row[];
+    return rows.map((r) => ({
+      id: r.id as string, observationType: r.observation_type as ObservationType, observationId: r.observation_id as string,
+      reason: r.reason as string, createdAt: r.created_at as string, resolved: !!r.resolved
+    }));
+  }
+
+  async setObservationStatus(type: ObservationType, id: string, status: "observed" | "confirmed" | "rejected") {
+    const res = await this.sb.from(TABLE[type]).update({ status }).eq("id", id).select("id");
+    if (!check(res)?.length) throw new Error("Not allowed (admins only).");
+  }
+
+  async resolveFlag(id: string) {
+    const res = await this.sb.from("observation_flags").update({ resolved: true }).eq("id", id).select("id");
+    if (!check(res)?.length) throw new Error("Not allowed (admins only).");
+  }
+}

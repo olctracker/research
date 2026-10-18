@@ -1,0 +1,35 @@
+# Checks the Supabase SQL (schema, validation, Row Level Security) against a throwaway Postgres.
+name: Database tests
+
+on:
+  push:
+    paths: ["supabase/**", "tests/sql/**", ".github/workflows/db-tests.yml"]
+  workflow_dispatch:
+
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations twice (must be re-runnable) and run tests
+        run: |
+          set -e
+          psql -v ON_ERROR_STOP=1 -q -f tests/sql/00_supabase_stub.sql
+          for i in 1 2; do
+            psql -v ON_ERROR_STOP=1 -q -f supabase/migrations/0001_schema.sql
+            psql -v ON_ERROR_STOP=1 -q -f supabase/migrations/0002_seed.sql
+          done
+          psql -v ON_ERROR_STOP=1 -f tests/sql/10_rls_test.sql | tee out.txt
+          grep -q "ALL RLS TESTS PASSED" out.txt
