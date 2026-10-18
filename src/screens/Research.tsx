@@ -9,19 +9,24 @@ import { Reliability, RELIABILITY_LABEL } from "../domain/knowledge";
 import type { Category, ExpObservation, LevelRequirementObservation, ObservationStatus, PriceObservation } from "../domain/types";
 import { useApp } from "../state";
 import { Card, fmt, Notice, NumberField, parseWhole, RelBadge, Segmented } from "../ui/components";
+import Conflicts from "./Conflicts";
 
-type Tab = "coverage" | "missing" | "observations" | "add";
+type Tab = "coverage" | "conflicts" | "missing" | "observations" | "add";
 
 export default function Research() {
-  const [tab, setTab] = useState<Tab>("coverage");
+  const { conflicts, isAdmin } = useApp();
+  const [tab, setTab] = useState<Tab>(isAdmin && conflicts.length ? "conflicts" : "coverage");
   return (
     <div className="screen">
       <h1>Research</h1>
       <Segmented label="Research section" value={tab} onChange={setTab} options={[
-        { value: "coverage", label: "Coverage" }, { value: "missing", label: "Missing" },
+        { value: "coverage", label: "Coverage" },
+        { value: "conflicts", label: conflicts.length ? `Conflicts ${conflicts.length}` : "Conflicts" },
+        { value: "missing", label: "Missing" },
         { value: "observations", label: "Records" }, { value: "add", label: "Add" }
       ]} />
       {tab === "coverage" && <Coverage />}
+      {tab === "conflicts" && <Conflicts />}
       {tab === "missing" && <Missing />}
       {tab === "observations" && <Observations />}
       {tab === "add" && <AddObservation onAdded={() => setTab("observations")} />}
@@ -303,7 +308,7 @@ function choicesFor(kind: AddKind) {
 }
 
 function AddObservation({ onAdded }: { onAdded: () => void }) {
-  const { contribute, player } = useApp();
+  const { contribute, player, user } = useApp();
   const [kind, setKind] = useState<AddKind>("store_price");
   const [upgradeId, setUpgradeId] = useState("spam");
   const [fromL, setFromL] = useState("");
@@ -331,7 +336,7 @@ function AddObservation({ onAdded }: { onAdded: () => void }) {
     const v = parseWhole(value);
     if (v === null) { setErr("Enter the value as a whole number"); return; }
     const now = new Date().toISOString();
-    const contributor = player?.alias || "me";
+    const contributor = user.username;
     const base = { id: newId(), contributor, createdAt: now, status: "observed" as const, notes: notes.trim().slice(0, 500) };
     try {
       if (isChar) {

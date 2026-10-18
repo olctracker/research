@@ -9,6 +9,7 @@ import { missingKey, planPurchase, totalsWithEntered } from "../src/domain/purch
 import { buildRecord } from "../src/domain/record";
 import { computeCompleteness, summarize } from "../src/domain/completeness";
 import { toCsv } from "../src/domain/export";
+import { findConflicts, resolution } from "../src/domain/conflicts";
 import { SEED_OBSERVATIONS } from "../src/domain/seed";
 import type { ExpObservation, ObservationSet, PriceObservation } from "../src/domain/types";
 
@@ -285,3 +286,55 @@ describe("Data integrity", () => {
     assert.equal(toCsv([{ a: 'x,"y"', b: 1 }]), 'a,b\n"x,""y""",1\n');
   });
 });
+
+describe("Admin conflict review", () => {
+  const two = (): ObservationSet => ({
+    ...empty(),
+    prices: [
+      P({ id: "a", fromLevel: 5, toLevel: 6, cost: 600, contributor: "alice", createdAt: "2026-10-01" }),
+      P({ id: "b", fromLevel: 5, toLevel: 6, cost: 650, contributor: "bob", createdAt: "2026-10-02" }),
+      P({ id: "c", fromLevel: 5, toLevel: 6, cost: 600, contributor: "cara", createdAt: "2026-10-03" }),
+      P({ id: "d", fromLevel: 6, toLevel: 7, cost: 700 })
+    ]
+  });
+
+  test("lists each disagreeing value with who entered it", () => {
+    const g = findConflicts(two());
+    assert.equal(g.length, 1);
+    assert.equal(g[0].subtitle, "Store price · level 6");
+    assert.deepEqual(g[0].options.map((o) => o.value), [600, 650]); // most-reported first
+    assert.deepEqual(g[0].options[0].rows.map((r) => r.contributor), ["alice", "cara"]);
+    assert.deepEqual(g[0].options[1].rows.map((r) => r.contributor), ["bob"]);
+  });
+
+  test("admin choice confirms one value and rejects the rest; conflict then clears", () => {
+    const obs = two();
+    const { keep, reject } = resolution(findConflicts(obs)[0], 650);
+    assert.deepEqual(keep, ["b"]);
+    assert.deepEqual(reject.sort(), ["a", "c"]);
+    const decided: ObservationSet = { ...obs, prices: obs.prices.map((p) => ({ ...p, status: keep.includes(p.id) ? "confirmed" : reject.includes(p.id) ? "rejected" : p.status })) };
+    assert.equal(findConflicts(decided).length, 0);
+    assert.equal(new Knowledge(decided).storeLevelPrice("spam", 6).value, 650);
+    assert.equal(new Knowledge(decided).storeLevelPrice("spam", 6).reliability, "confirmed");
+    assert.equal(decided.prices.length, 4); // nothing deleted
+  });
+
+  test("a new report that disagrees with a confirmed value comes back for review", () => {
+    const obs: ObservationSet = { ...empty(), prices: [
+      P({ id: "a", fromLevel: 5, toLevel: 6, cost: 600, status: "confirmed" }),
+      P({ id: "b", fromLevel: 5, toLevel: 6, cost: 610 })
+    ] };
+    const g = findConflicts(obs);
+    assert.equal(g.length, 1);
+    assert.equal(g[0].challengesConfirmed, true);
+  });
+
+  test("store and download values for the same level never count as a conflict", () => {
+    const obs: ObservationSet = { ...empty(), exp: [
+      E({ fromLevel: 4, toLevel: 5, exp: 5 }),
+      E({ method: "download", fromLevel: 1, toLevel: 5, exp: 9, expBasis: "per_transaction" })
+    ] };
+    assert.equal(findConflicts(obs).length, 0);
+  });
+});
+

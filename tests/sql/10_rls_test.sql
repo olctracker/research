@@ -14,13 +14,32 @@ begin
 end $$;
 grant execute on function pg_temp.expect_error(text, text) to anon, authenticated;
 
+-- ---------- accounts (as Supabase Auth would create them) ----------
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('11111111-1111-1111-1111-111111111111', 'alice@users.hedb.app', '{"username":"alice"}'),
+  ('22222222-2222-2222-2222-222222222222', 'bob@users.hedb.app',   '{"username":"bob"}');
+do $$ begin
+  if (select count(*) from public.player_profiles) <> 2 then raise exception 'FAILED: sign-up trigger did not create profiles'; end if;
+end $$;
+select pg_temp.expect_error($$insert into auth.users (id, email, raw_user_meta_data) values (gen_random_uuid(), 'x@users.hedb.app', '{"username":"Bad Name!"}')$$, 'invalid username');
+select pg_temp.expect_error($$insert into auth.users (id, email, raw_user_meta_data) values (gen_random_uuid(), 'alice2@users.hedb.app', '{"username":"alice"}')$$, 'duplicate username');
+
 -- ---------- anon ----------
 set role anon;
 select set_config('request.jwt.claim.sub', '', false);
 do $$ begin
   if (select count(*) from public.upgrade_catalog) <> 16 then raise exception 'FAILED: anon should read 16 catalog rows'; end if;
-  if (select count(*) from public.price_observations) <> 4 then raise exception 'FAILED: anon should read seed prices'; end if;
 end $$;
+select pg_temp.expect_error($$select * from public.price_observations$$, 'anon read observations');
+do $$ begin
+  -- lockout: 5 wrong PINs locks the username
+  perform public.login_failed('alice'); perform public.login_failed('alice'); perform public.login_failed('alice'); perform public.login_failed('alice');
+  if public.login_wait('alice') <> 0 then raise exception 'FAILED: locked too early'; end if;
+  if public.login_failed('alice') <> 0 then raise exception 'FAILED: 5th failure should lock'; end if;
+  if public.login_wait('alice') < 800 then raise exception 'FAILED: alice should be locked ~15 min'; end if;
+end $$;
+select pg_temp.expect_error($$select * from public.login_attempts$$, 'anon read login attempts');
+select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '1234')$$, 'anon reset PIN');
 select pg_temp.expect_error($$insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,600,'per_level')$$, 'anon insert observation');
 select pg_temp.expect_error($$select * from public.player_progress$$, 'anon read player_progress');
 reset role;
@@ -33,7 +52,14 @@ insert into public.player_upgrade_state (upgrade_id, level) values ('spam', 5), 
 insert into public.purchase_history (upgrade_id, method, from_level, to_level, cost, cost_source, exp_earned, exp_expected,
   before_level, before_exp, before_required, after_level, after_exp, after_required, confidence)
   values ('spam','store',4,5,500,'observed',5,5,4,90,130,4,95,130,'uses_unverified');
-insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,600,'per_level');
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, contributor_alias) values ('spam','store',5,6,600,'per_level','someone_else');
+do $$ begin
+  if (select contributor_alias from public.price_observations where cost = 600) <> 'alice' then raise exception 'FAILED: contributor name not stamped from profile'; end if;
+  if (select count(*) from public.player_profiles) <> 1 then raise exception 'FAILED: non-admin sees other profiles'; end if;
+end $$;
+select pg_temp.expect_error($$update public.player_profiles set username = 'mallory'$$, 'rename own username');
+select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '1234')$$, 'non-admin reset PIN');
+select pg_temp.expect_error($$select public.admin_resolve('price_observations', array[]::uuid[], array[]::uuid[])$$, 'non-admin resolve conflict');
 insert into public.level_requirement_observations (level, exp_required) values (4, 130);
 
 select pg_temp.expect_error($$insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, status) values ('spam','store',6,7,700,'per_level','confirmed')$$, 'self-confirm an observation');
@@ -78,9 +104,22 @@ end $$;
 insert into public.app_admins values ('11111111-1111-1111-1111-111111111111');
 set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
-update public.price_observations set status = 'confirmed' where cost = 600;
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,650,'per_level');
+select public.admin_resolve('price_observations',
+  array(select id from public.price_observations where cost = 600), array(select id from public.price_observations where cost = 650));
 update public.observation_flags set resolved = true;
+select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '4321');
+do $$ begin
+  if (select count(*) from public.player_profiles) <> 2 then raise exception 'FAILED: admin should see all profiles'; end if;
+end $$;
+select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '12a4')$$, 'bad PIN format');
 reset role;
+do $$ begin
+  if (select status from public.price_observations where cost = 650) <> 'rejected' then raise exception 'FAILED: losing value not rejected'; end if;
+  if (select encrypted_password from auth.users where id = '22222222-2222-2222-2222-222222222222') <> crypt('hedb#4321#pin', (select encrypted_password from auth.users where id = '22222222-2222-2222-2222-222222222222')) then
+    raise exception 'FAILED: PIN reset did not set the expected password';
+  end if;
+end $$;
 do $$ begin
   if not exists (select 1 from public.price_observations where cost = 600 and status = 'confirmed') then raise exception 'FAILED: admin could not confirm'; end if;
   if exists (select 1 from public.observation_flags where not resolved) then raise exception 'FAILED: admin could not resolve flag'; end if;

@@ -1,4 +1,4 @@
-# Hack EX2 Upgrade Tracker
+# HEDB · Hack EX2 Upgrade Database
 
 A phone-friendly web app for recording Hack EX2 upgrade purchases, working out the EXP each one gave, and building a shared database of real price and EXP observations.
 
@@ -19,7 +19,9 @@ supabase/migrations/  SQL to create tables, validation and security rules
 tests/        Acceptance tests (npm test) and database security tests (tests/sql)
 ```
 
-Without Supabase settings the app runs in **local mode**: everything is saved in your browser and nothing is shared. Add the two settings below to switch to the shared database.
+**Accounts:** every player creates a **username + 4-digit PIN**. Their progress follows them to any phone. One admin (you) settles conflicting reports and can reset forgotten PINs.
+
+Without Supabase settings the app runs in **test mode**: accounts and data are saved only in that browser, and the first account created is the admin. Add the two settings below to switch to the shared database.
 
 ---
 
@@ -30,8 +32,12 @@ Without Supabase settings the app runs in **local mode**: everything is saved in
 1. Go to [supabase.com](https://supabase.com) and create a **new project**. Pick any name and save the database password somewhere safe.
 2. Open **SQL Editor → New query**. Paste all of `supabase/migrations/0001_schema.sql` and click **Run**.
 3. Do the same with `supabase/migrations/0002_seed.sql`. This adds the 16 upgrades and the Spam example data.
-4. Turn on anonymous accounts: **Authentication → Sign In / Providers → "Allow anonymous sign-ins" → on → Save**.
-   Players don't need email or passwords. Each phone gets its own private profile.
+4. Set up PIN accounts. Go to **Authentication → Sign In / Providers → Email** and set:
+   - **Enable Email provider**: on
+   - **Confirm email**: **off**. This is required, because players sign up with a username and PIN, not a real email address.
+   - Save.
+
+   Behind the scenes the app turns `username` + PIN into the account `username@users.hedb.app`. No real email is ever used or stored.
 5. Copy two values from **Project Settings → API Keys** (the Project URL is under **Data API** or on the project home page):
    - **Project URL**, like `https://abcdxyz.supabase.co`
    - **Publishable key**, starting with `sb_publishable_`. Older projects call it the `anon` key.
@@ -49,15 +55,27 @@ Without Supabase settings the app runs in **local mode**: everything is saved in
 3. Open the **Actions** tab, pick **Deploy to GitHub Pages**, and click **Run workflow**. Every later push to `main` redeploys automatically.
 4. The site appears at `https://<your-github-name>.github.io/<repository-name>/`.
 
-### 3. Make yourself the admin (optional, for moderation)
+### 3. Make yourself the admin
 
-1. Open the site on your phone once, then open **More → Account** and note the start of the Player ID.
-2. In Supabase open **Authentication → Users** and find the anonymous user with that ID. Copy its full ID.
-3. In **SQL Editor** run:
+1. Open the site and **Create account** with your username and PIN.
+2. In Supabase **SQL Editor** run this, replacing `your_username`:
    ```sql
-   insert into public.app_admins (user_id) values ('paste-the-full-id-here');
+   insert into public.app_admins (user_id)
+   select user_id from public.player_profiles where username = 'your_username';
    ```
-4. Reload the app. On **Research → Records** you can now mark observations confirmed or rejected and resolve flags.
+3. Sign out and back in. You'll see **ADMIN** next to your name.
+
+As admin you get:
+- **Conflicts:** when players report different values (for example, two different prices for Spam level 6), the dashboard alerts you. **Research → Conflicts** shows each value, who entered it, when, and whether it came from a recorded purchase. Tap **Use …** to choose the right one. The others are marked *rejected*, but they're never deleted.
+- **Records:** mark any single observation confirmed or rejected, and resolve flags.
+- **More → Players:** see everyone who has joined and **reset a forgotten PIN**.
+
+### 4. Install on phones
+
+- **Android (Chrome):** open the site, then tap **Install app** (on More, or the sign-in screen), or use menu ⋮ → **Add to Home screen**.
+- **iPhone (Safari):** open the site, then tap Share → **Add to Home Screen**. iPhone only allows this from Safari.
+
+The installed app opens full-screen with its own icon.
 
 ---
 
@@ -78,6 +96,9 @@ npm run build                # type-checks and builds into dist/
 ## Security summary
 
 - The frontend only ever has the **publishable** key.
+- Sign-in uses Supabase Auth. PINs are never stored by the app; Supabase stores only a salted hash.
+- **A 4-digit PIN has only 10,000 combinations.** That's fine for a game tracker, but not for anything that matters. After 5 wrong PINs the app locks that username for 15 minutes, and Supabase Auth's own sign-in rate limits add a second layer. A determined attacker who skips the app and calls Supabase directly is limited only by those rate limits. Tell players not to reuse a bank or phone PIN.
+- Only signed-in players can read the research data. Contributor names come from the account and are stamped by the database, so nobody can post under someone else's name.
 - Every table has **Row Level Security** turned on:
   - Your progress, levels and purchase history are visible and editable **only by you**.
   - Anyone can read shared observations. Signed-in players can add new ones, but only with status `observed` and only under their own ID.
@@ -104,8 +125,10 @@ npm run build                # type-checks and builds into dist/
 - **Unverified:** the Keygen download rule, the discount rounding, whether download totals equal the sum of their components, and caps on uncapped software.
 - **Spec Example B is not in the database:** the download cost components 100/200/300/400 with 5 EXP weren't saved because the software they came from wasn't recorded. Record it again with the software name.
 - **EXP inference assumes nothing else gave EXP** between "before" and "after". Enter your new stats right after buying. Use **Home → Update** for EXP from hacks and other sources.
-- **Anonymous sessions are per browser.** Clearing site data, or switching phone or browser, starts a new empty profile, so export a backup now and then. Linking an email account is planned for Phase 2.
+- Usernames can't be changed after sign-up. Deleting an account is done by the admin in Supabase (**Authentication → Users**).
 - **Coverage measures a defined range:** capped upgrades up to their maximum; uncapped software up to level 20, or the highest level anyone has recorded; character levels 1–30. 100% coverage there does not mean everything is known.
 - **Deleting a history entry** doesn't roll back your levels. Use **Edit game state** for that.
 - **Moderation is basic:** admins mark records confirmed or rejected and resolve flags. There's no voting or bulk review yet.
-- The site has a `noindex` tag so search engines skip it. Anyone with the link can still open it.
+- The site has a `noindex` tag so search engines skip it. Anyone with the link can open the sign-in page, but research data needs an account.
+- Sign-up is open to anyone with the link. Approving new players before they can contribute is not built yet.
+- Offline: the installed app opens without a connection, but needs internet to sign in, load or save data.

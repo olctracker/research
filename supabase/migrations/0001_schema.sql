@@ -1,7 +1,11 @@
 -- =====================================================================
 -- Hack EX2 Upgrade Tracker — schema, validation and Row Level Security
 -- Run this whole file once in Supabase: Dashboard → SQL Editor → New query → Run.
--- Then run 0002_seed.sql.
+-- Then run 0002_seed.sql. Safe to run again after changes.
+--
+-- Accounts: players sign up with a username + 4-digit PIN. The app turns these into
+-- an email "<username>@users.hedb.app" and password "hedb#<PIN>#pin" for Supabase Auth,
+-- so Authentication → Email → "Confirm email" must be OFF.
 -- =====================================================================
 
 create extension if not exists pgcrypto;
@@ -141,10 +145,41 @@ create trigger exp_obs_catalog before insert or update on public.exp_observation
 -- Personal data: only the owner can see or change it.
 -- ---------------------------------------------------------------------
 create table if not exists public.player_profiles (
-  user_id    uuid primary key references auth.users(id) on delete cascade default auth.uid(),
-  alias      text not null default '' check (char_length(alias) <= 40),
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  username   text not null unique check (username ~ '^[a-z0-9_]{3,20}$'),
   created_at timestamptz not null default now()
 );
+
+-- A profile is created automatically when an account signs up (username comes from sign-up metadata).
+create or replace function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare u text := lower(coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)));
+begin
+  if u !~ '^[a-z0-9_]{3,20}$' then
+    raise exception 'Username must be 3–20 letters, numbers or _';
+  end if;
+  insert into public.player_profiles (user_id, username) values (new.id, u);
+  return new;
+end $$;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Observations always show the contributor's real username (it can't be faked by the client).
+create or replace function public.stamp_contributor() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null then
+    new.contributor_alias := (select username from public.player_profiles where user_id = auth.uid());
+  end if;
+  return new;
+end $$;
+drop trigger if exists price_obs_stamp on public.price_observations;
+create trigger price_obs_stamp before insert on public.price_observations for each row execute function public.stamp_contributor();
+drop trigger if exists exp_obs_stamp on public.exp_observations;
+create trigger exp_obs_stamp before insert on public.exp_observations for each row execute function public.stamp_contributor();
+drop trigger if exists req_obs_stamp on public.level_requirement_observations;
+create trigger req_obs_stamp before insert on public.level_requirement_observations for each row execute function public.stamp_contributor();
 
 create table if not exists public.player_progress (
   user_id        uuid primary key references auth.users(id) on delete cascade default auth.uid(),
@@ -220,14 +255,14 @@ create policy catalog_read on public.upgrade_catalog for select to anon, authent
 drop policy if exists admins_read on public.app_admins;
 create policy admins_read on public.app_admins for select to authenticated using (user_id = auth.uid() or public.is_admin());
 
--- Observations: anyone can read; signed-in players add their own as "observed";
+-- Observations: any signed-in player can read; signed-in players add their own as "observed";
 -- only admins can change status or correct a row. Nobody deletes through the API.
 do $$
 declare t text;
 begin
   foreach t in array array['price_observations','exp_observations','level_requirement_observations'] loop
     execute format('drop policy if exists obs_read on public.%I', t);
-    execute format('create policy obs_read on public.%I for select to anon, authenticated using (true)', t);
+    execute format('create policy obs_read on public.%I for select to authenticated using (true)', t);
     execute format('drop policy if exists obs_insert on public.%I', t);
     execute format($p$create policy obs_insert on public.%I for insert to authenticated
                      with check (contributor_id = auth.uid() and status = 'observed')$p$, t);
@@ -249,24 +284,106 @@ create policy flags_admin_update on public.observation_flags for update to authe
 do $$
 declare t text;
 begin
-  foreach t in array array['player_profiles','player_progress','player_upgrade_state','purchase_history'] loop
+  foreach t in array array['player_progress','player_upgrade_state','purchase_history'] loop
     execute format('drop policy if exists owner_all on public.%I', t);
     execute format('create policy owner_all on public.%I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;
 end $$;
 
+-- Profiles: you see your own; the admin sees everyone's (for PIN resets). Created only by the sign-up trigger.
+drop policy if exists profile_read on public.player_profiles;
+create policy profile_read on public.player_profiles for select to authenticated
+  using (user_id = auth.uid() or public.is_admin());
+drop policy if exists owner_all on public.player_profiles;
+
+-- ---------------------------------------------------------------------
+-- PIN sign-in helpers
+-- ---------------------------------------------------------------------
+-- Lockout after 5 wrong PINs for 15 minutes. The app checks this before every sign-in.
+-- (Supabase Auth's own rate limits are the second line of defence.)
+create table if not exists public.login_attempts (
+  username     text primary key,
+  failures     int not null default 0,
+  locked_until timestamptz
+);
+alter table public.login_attempts enable row level security;   -- no policies: only the functions below touch it
+
+-- Seconds until this username may try again (0 = not locked).
+create or replace function public.login_wait(p_username text) returns int
+language sql stable security definer set search_path = public as $$
+  select coalesce(greatest(0, ceil(extract(epoch from (locked_until - now()))))::int, 0)
+  from (select max(locked_until) as locked_until from public.login_attempts where username = lower(p_username)) x;
+$$;
+
+-- Records a wrong PIN. Returns how many tries are left before a lockout.
+create or replace function public.login_failed(p_username text) returns int
+language plpgsql security definer set search_path = public as $$
+declare f int;
+begin
+  if lower(p_username) !~ '^[a-z0-9_]{3,20}$' then return 0; end if;
+  insert into public.login_attempts as a (username, failures) values (lower(p_username), 1)
+  on conflict (username) do update set failures = case when a.locked_until < now() then 1 else a.failures + 1 end,
+                                     locked_until = case when a.locked_until < now() then null else a.locked_until end
+  returning failures into f;
+  if f >= 5 then
+    update public.login_attempts set locked_until = now() + interval '15 minutes', failures = 0 where username = lower(p_username);
+    return 0;
+  end if;
+  return 5 - f;
+end $$;
+
+-- Clears the counter after a successful sign-in.
+create or replace function public.login_ok() returns void
+language sql security definer set search_path = public as $$
+  delete from public.login_attempts
+  where username = (select username from public.player_profiles where user_id = auth.uid());
+$$;
+
+-- Admin: set a new 4-digit PIN for a player who forgot theirs.
+create or replace function public.admin_reset_pin(p_user_id uuid, p_pin text) returns void
+language plpgsql security definer set search_path = public, extensions, auth as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if p_pin !~ '^[0-9]{4}$' then raise exception 'PIN must be 4 digits'; end if;
+  update auth.users set encrypted_password = crypt('hedb#' || p_pin || '#pin', gen_salt('bf')), updated_at = now()
+  where id = p_user_id;
+  if not found then raise exception 'Player not found'; end if;
+  delete from public.login_attempts
+  where username = (select username from public.player_profiles where user_id = p_user_id);
+end $$;
+
+-- Admin: settle a conflict by confirming the chosen observations and rejecting the others.
+create or replace function public.admin_resolve(p_table text, p_keep uuid[], p_reject uuid[]) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if p_table not in ('price_observations','exp_observations','level_requirement_observations') then
+    raise exception 'Unknown table';
+  end if;
+  execute format('update public.%I set status = ''confirmed'' where id = any($1)', p_table) using p_keep;
+  execute format('update public.%I set status = ''rejected'' where id = any($1)', p_table) using p_reject;
+end $$;
+
+revoke all on function public.login_wait(text), public.login_failed(text), public.login_ok(),
+  public.admin_reset_pin(uuid, text), public.admin_resolve(text, uuid[], uuid[]) from public;
+grant execute on function public.login_wait(text), public.login_failed(text) to anon, authenticated;
+grant execute on function public.login_ok(), public.admin_reset_pin(uuid, text),
+  public.admin_resolve(text, uuid[], uuid[]) to authenticated;
+
 -- Table privileges (RLS above still decides which rows). Start from nothing, then grant.
 revoke all on public.upgrade_catalog, public.app_admins, public.price_observations, public.exp_observations,
   public.level_requirement_observations, public.observation_flags, public.player_profiles,
-  public.player_progress, public.player_upgrade_state, public.purchase_history from anon, authenticated;
+  public.player_progress, public.player_upgrade_state, public.purchase_history, public.login_attempts from anon, authenticated;
 grant usage on schema public to anon, authenticated;
-grant select on public.upgrade_catalog, public.price_observations, public.exp_observations,
-  public.level_requirement_observations to anon, authenticated;
+grant select on public.upgrade_catalog to anon, authenticated;
+grant select on public.price_observations, public.exp_observations,
+  public.level_requirement_observations to authenticated;
 grant insert on public.price_observations, public.exp_observations,
   public.level_requirement_observations, public.observation_flags to authenticated;
 grant update (status, notes) on public.price_observations, public.exp_observations,
   public.level_requirement_observations to authenticated;
 grant select on public.observation_flags, public.app_admins to authenticated;
 grant update (resolved) on public.observation_flags to authenticated;
-grant select, insert, update, delete on public.player_profiles, public.player_progress,
+grant select on public.player_profiles to authenticated;
+grant select, insert, update, delete on public.player_progress,
   public.player_upgrade_state, public.purchase_history to authenticated;

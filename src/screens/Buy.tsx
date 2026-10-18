@@ -227,7 +227,7 @@ export default function Buy() {
       if (!parsed.state || parsed.error) { setErr(parsed.error); return; }
       const res = buildRecord({
         plan: plan!, entered, before: player.character, after: parsed.state, keygenLevel: method === "download" ? keygen : null,
-        kb: app.kb, reqFor, contributor: player.alias || "me", notes, now: new Date().toISOString(), newId
+        kb: app.kb, reqFor, contributor: app.user.username, notes, now: new Date().toISOString(), newId
       });
       if (res.inference.status === "invalid") { setErr(res.inference.error ?? "Check the numbers"); return; }
       const next: PlayerState = {

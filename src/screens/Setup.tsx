@@ -8,9 +8,8 @@ import { Card, Notice, Stepper } from "../ui/components";
 const GROUPS: Category[] = ["core", "defensive", "offensive", "virus", "utility"];
 
 export default function Setup({ onDone }: { onDone: () => void }) {
-  const { player, savePlayer } = useApp();
+  const { player, savePlayer, user } = useApp();
   const first = !player?.setupComplete;
-  const [alias, setAlias] = useState(player?.alias ?? "");
   const [char, setChar] = useState(draftFrom(player?.character ?? { level: 1, exp: 0, required: null }));
   const [levels, setLevels] = useState<Record<string, number>>({ ...defaultLevels(), ...(player?.levels ?? {}) });
   const [error, setError] = useState<string | null>(null);
@@ -25,9 +24,8 @@ export default function Setup({ onDone }: { onDone: () => void }) {
       const msg = validateLevel(entry, levels[entry.id] ?? 0);
       if (msg) { setError(`${entry.name}: ${msg}`); return; }
     }
-    if (alias.length > 40) { setError("Alias can be at most 40 characters"); return; }
     const next: PlayerState = {
-      alias: alias.trim(), character: state, levels, setupComplete: true, updatedAt: new Date().toISOString()
+      alias: user.username, character: state, levels, setupComplete: true, updatedAt: new Date().toISOString()
     };
     setBusy(true);
     try { await savePlayer(next); onDone(); }
@@ -40,18 +38,10 @@ export default function Setup({ onDone }: { onDone: () => void }) {
       <h1>{first ? "Set up your game" : "Edit game state"}</h1>
       <p className="lead">
         {first
-          ? "Enter what your game shows right now. You don't have to start at level 1."
+          ? `Welcome, ${user.username}. Enter what your game shows right now — you don't have to start at level 1.`
           : "Fix any numbers that are out of date. This doesn't create a purchase or any shared data."}
       </p>
 
-      <Card title="Profile">
-        <div className="field">
-          <label htmlFor="alias">Alias (optional)</label>
-          <input id="alias" className="input" maxLength={40} value={alias} onChange={(e) => setAlias(e.target.value)}
-            placeholder="Shown on research you share" />
-          <div className="hint">Don't use your game password or anything private.</div>
-        </div>
-      </Card>
 
       <Card title="Character">
         <CharacterForm draft={char} onChange={setChar} />

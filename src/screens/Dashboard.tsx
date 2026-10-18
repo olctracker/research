@@ -11,7 +11,7 @@ import { go } from "../ui/router";
 const GROUPS: Category[] = ["core", "defensive", "offensive", "virus", "utility"];
 
 export default function Dashboard() {
-  const { player, purchases, kb, savePlayer, repo } = useApp();
+  const { player, purchases, kb, savePlayer, repo, conflicts, isAdmin } = useApp();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(draftFrom(player?.character));
   const [err, setErr] = useState<string | null>(null);
@@ -43,7 +43,14 @@ export default function Dashboard() {
   return (
     <div className="screen">
       {repo.mode === "local" && (
-        <Notice tone="warn">Local mode: data is saved only in this browser and isn't shared. Connect Supabase to share research (see README).</Notice>
+        <Notice tone="warn">Test mode: data is saved only in this browser. Connect Supabase to share with your crew (see README).</Notice>
+      )}
+      {isAdmin && conflicts.length > 0 && (
+        <button className="alert-card" onClick={() => go("research")}>
+          <span className="alert-count mono">{conflicts.length}</span>
+          <span className="grow"><b>Conflicting reports need your decision</b><span className="hint block">Players entered different values. Tap to review.</span></span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
 
       <Card

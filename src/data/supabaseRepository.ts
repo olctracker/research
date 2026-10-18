@@ -5,9 +5,16 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { CATALOG } from "../domain/catalog";
 import type {
-  ExpObservation, LevelRequirementObservation, ObservationSet, PlayerState, PriceObservation, PurchaseRecord
+  ExpObservation, LevelRequirementObservation, ObservationSet, ObservationStatus, PlayerState, PriceObservation, PurchaseRecord
 } from "../domain/types";
-import { Contribution, Flag, ObservationType, Repository } from "./repository";
+import {
+  checkCredentials, Contribution, Flag, normalizeUsername, ObservationType, PlayerSummary, Repository, SessionUser
+} from "./repository";
+
+/** Username + PIN are turned into the email/password Supabase Auth expects. Must match the SQL (admin_reset_pin). */
+const EMAIL_DOMAIN = "users.hedb.app";
+const emailFor = (username: string) => `${normalizeUsername(username)}@${EMAIL_DOMAIN}`;
+const passwordFor = (pin: string) => `hedb#${pin}#pin`;
 
 type Row = Record<string, unknown>;
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
@@ -43,51 +50,96 @@ const toReq = (r: Row): LevelRequirementObservation => ({
 
 export class SupabaseRepository implements Repository {
   readonly mode = "supabase" as const;
+  readonly requiresAccount = true;
   private sb: SupabaseClient;
   private userId = "";
-  private alias = "";
+  private username = "";
 
   constructor(url: string, publishableKey: string) {
     this.sb = createClient(url, publishableKey, { auth: { persistSession: true, autoRefreshToken: true } });
   }
 
+  /** Loads username and admin flag for the signed-in account. */
+  private async describe(userId: string): Promise<SessionUser> {
+    const [prof, admin] = await Promise.all([
+      this.sb.from("player_profiles").select("username").eq("user_id", userId).maybeSingle(),
+      this.sb.from("app_admins").select("user_id").eq("user_id", userId).maybeSingle()
+    ]);
+    const username = ((check(prof) as Row | null)?.username as string) ?? "";
+    this.userId = userId;
+    this.username = username;
+    return { userId, username, isAdmin: !!admin.data };
+  }
+
   async init() {
     const { data } = await this.sb.auth.getSession();
-    let session = data.session;
-    if (!session) {
-      const res = await this.sb.auth.signInAnonymously();
-      if (res.error) {
-        throw new Error(`Couldn't start a session: ${res.error.message}. In Supabase, turn on Authentication → Sign In / Providers → "Allow anonymous sign-ins".`);
+    return data.session ? this.describe(data.session.user.id) : null;
+  }
+
+  async signIn(username: string, pin: string) {
+    const bad = checkCredentials(username, pin);
+    if (bad) throw new Error(bad);
+    const u = normalizeUsername(username);
+    const wait = Number(check(await this.sb.rpc("login_wait", { p_username: u })) ?? 0);
+    if (wait > 0) throw new Error(`Too many wrong PINs. Try again in ${Math.ceil(wait / 60)} minute${wait > 60 ? "s" : ""}.`);
+    const res = await this.sb.auth.signInWithPassword({ email: emailFor(u), password: passwordFor(pin) });
+    if (res.error || !res.data.session) {
+      if (res.error && /invalid login credentials/i.test(res.error.message)) {
+        const left = Number(check(await this.sb.rpc("login_failed", { p_username: u })) ?? 0);
+        throw new Error(left > 0 ? `Wrong username or PIN. ${left} ${left === 1 ? "try" : "tries"} left.` : "Too many wrong PINs. Locked for 15 minutes.");
       }
-      session = res.data.session;
+      throw new Error(res.error?.message ?? "Couldn't sign in");
     }
-    if (!session) throw new Error("Couldn't start a session. Please reload.");
-    this.userId = session.user.id;
-    const admin = await this.sb.from("app_admins").select("user_id").eq("user_id", this.userId).maybeSingle();
-    return { userId: this.userId, isAdmin: !!admin.data };
+    await this.sb.rpc("login_ok");
+    return this.describe(res.data.session.user.id);
+  }
+
+  async signUp(username: string, pin: string) {
+    const bad = checkCredentials(username, pin);
+    if (bad) throw new Error(bad);
+    const u = normalizeUsername(username);
+    const res = await this.sb.auth.signUp({ email: emailFor(u), password: passwordFor(pin), options: { data: { username: u } } });
+    if (res.error) {
+      if (/already registered|already exists|duplicate/i.test(res.error.message)) throw new Error("That username is taken");
+      throw new Error(res.error.message);
+    }
+    if (!res.data.session) {
+      // Supabase hides "already registered" when email confirmation is on, and returns no session.
+      throw new Error("Account not active. Admin: turn OFF Authentication → Email → “Confirm email” in Supabase (see README).");
+    }
+    return this.describe(res.data.session.user.id);
+  }
+
+  async signOut() {
+    await this.sb.auth.signOut();
+    this.userId = ""; this.username = "";
+  }
+
+  async changePin(oldPin: string, newPin: string) {
+    if (!/^\d{4}$/.test(newPin)) throw new Error("PIN must be exactly 4 digits");
+    const verify = await this.sb.auth.signInWithPassword({ email: emailFor(this.username), password: passwordFor(oldPin) });
+    if (verify.error) throw new Error("Current PIN is wrong");
+    const res = await this.sb.auth.updateUser({ password: passwordFor(newPin) });
+    if (res.error) throw new Error(res.error.message);
   }
 
   async loadPlayer(): Promise<PlayerState | null> {
-    const [prof, prog, lv] = await Promise.all([
-      this.sb.from("player_profiles").select("*").maybeSingle(),
-      this.sb.from("player_progress").select("*").maybeSingle(),
-      this.sb.from("player_upgrade_state").select("upgrade_id, level")
+    const [prog, lv] = await Promise.all([
+      this.sb.from("player_progress").select("*").eq("user_id", this.userId).maybeSingle(),
+      this.sb.from("player_upgrade_state").select("upgrade_id, level").eq("user_id", this.userId)
     ]);
     const p = check(prog) as Row | null;
-    this.alias = ((check(prof) as Row | null)?.alias as string) ?? "";
     if (!p) return null;
     const levels: Record<string, number> = Object.fromEntries(CATALOG.map((e) => [e.id, e.startLevel]));
     for (const r of (check(lv) as Row[]) ?? []) levels[r.upgrade_id as string] = Number(r.level);
     return {
-      alias: this.alias,
+      alias: this.username,
       character: { level: Number(p.level), exp: Number(p.exp), required: num(p.required) },
       levels, setupComplete: !!p.setup_complete, updatedAt: p.updated_at as string
     };
   }
 
   async savePlayer(p: PlayerState) {
-    this.alias = p.alias;
-    check(await this.sb.from("player_profiles").upsert({ user_id: this.userId, alias: p.alias }));
     check(await this.sb.from("player_progress").upsert({
       user_id: this.userId, level: p.character.level, exp: p.character.exp, required: p.character.required,
       setup_complete: p.setupComplete, updated_at: p.updatedAt
@@ -142,8 +194,8 @@ export class SupabaseRepository implements Repository {
   }
 
   async contribute(c: Contribution) {
-    const alias = this.alias || null;
-    const meta = { contributor_id: this.userId, contributor_alias: alias, status: "observed" };
+    // contributor_alias is filled in by the database from your profile.
+    const meta = { contributor_id: this.userId, status: "observed" };
     if (c.prices.length) check(await this.sb.from(TABLE.price).insert(c.prices.map((p) => ({
       ...meta, id: p.id, upgrade_id: p.upgradeId, method: p.method, from_level: p.fromLevel, to_level: p.toLevel,
       cost: p.cost, cost_type: p.costType, price_basis: p.priceBasis, keygen_level: p.keygenLevel,
@@ -170,13 +222,26 @@ export class SupabaseRepository implements Repository {
     }));
   }
 
-  async setObservationStatus(type: ObservationType, id: string, status: "observed" | "confirmed" | "rejected") {
+  async setObservationStatus(type: ObservationType, id: string, status: ObservationStatus) {
     const res = await this.sb.from(TABLE[type]).update({ status }).eq("id", id).select("id");
     if (!check(res)?.length) throw new Error("Not allowed (admins only).");
+  }
+
+  async resolveConflict(type: ObservationType, keepIds: string[], rejectIds: string[]) {
+    check(await this.sb.rpc("admin_resolve", { p_table: TABLE[type], p_keep: keepIds, p_reject: rejectIds }));
   }
 
   async resolveFlag(id: string) {
     const res = await this.sb.from("observation_flags").update({ resolved: true }).eq("id", id).select("id");
     if (!check(res)?.length) throw new Error("Not allowed (admins only).");
+  }
+
+  async listPlayers(): Promise<PlayerSummary[]> {
+    const rows = check(await this.sb.from("player_profiles").select("user_id, username, created_at").order("username")) as Row[];
+    return rows.map((r) => ({ userId: r.user_id as string, username: r.username as string, createdAt: r.created_at as string }));
+  }
+
+  async resetPin(userId: string, pin: string) {
+    check(await this.sb.rpc("admin_reset_pin", { p_user_id: userId, p_pin: pin }));
   }
 }
