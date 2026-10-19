@@ -71,7 +71,7 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
 
       <Card title="Character">
         <CharacterForm draft={char} onChange={(d) => { setSaved(false); setChar(d); }} />
-        <div className="hint">Copy these from your game home screen: LVL, then XP progress (for example 5870 / 17993).</div>
+        <div className="hint">Copy these from your game home screen: LVL, then XP progress (for example 5870 / 17993). Or paste them in the top box.</div>
         <div className="row reboot-row">
           <div className="grow">
             <div className="row-title">Reboots</div>

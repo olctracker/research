@@ -396,3 +396,19 @@ select.input { appearance: auto; }
 .report-notes { font-style: italic; overflow-wrap: anywhere; }
 .report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .edit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--surface-2); }
+
+/* ---------- Device Input (paste from the game) ---------- */
+.paste-box { display: flex; flex-direction: column; gap: 6px; }
+.paste-area { min-height: 84px; resize: vertical; font-family: var(--mono); font-size: 0.85rem; line-height: 1.35; padding: 10px 12px; }
+.found { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.found-title { font-weight: 700; margin-top: 4px; }
+.found-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.found-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.found-list li:first-child { border-top: 0; }
+.found-list li > span:last-child { text-align: right; }
+.small { font-size: 0.8rem; }
+.good-text { color: var(--good); }
+.quick-xp { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.quick-xp > span { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.quick-xp .input { text-align: center; }
+.paste-cta { margin-bottom: 4px; }

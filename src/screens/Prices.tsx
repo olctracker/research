@@ -6,6 +6,7 @@ import { needsEntry, NextPriceRow, nextPriceRows } from "../domain/nextPrices";
 import type { Category, Method, PriceObservation } from "../domain/types";
 import { useApp } from "../state";
 import { Card, fmt, Notice, parseWhole, RelBadge, Segmented } from "../ui/components";
+import { go } from "../ui/router";
 
 const ORDER: Category[] = ["core", "defensive", "offensive", "virus", "utility", "one_time"];
 
@@ -104,6 +105,7 @@ export default function Prices({ method }: { method: Method }) {
           ? "The store only shows the price of your next level, so that's what each row asks for. Enter the price exactly as the store shows it."
           : `Keygen shows the price for your next level of each program. Your Keygen is level ${keygen}, so you can get keys up to level ${keygen}.`}
       </p>
+      <button className="btn full paste-cta" onClick={() => go("input")}>Paste from the game ({store ? "Store" : "Apps"} screen)</button>
       {store && <Notice tone="info">Defensive software already shows the 15% discount in the store — just enter the price you see.</Notice>}
 
       <div className={`summary-bar${missing ? " warn" : " good"}`}>

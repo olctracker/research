@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useId, useState } from "react";
+import { parseHome } from "../domain/paste";
 import { validateCharacter } from "../domain/exp";
 import type { CharacterState } from "../domain/types";
 import { parseWhole } from "./components";
@@ -33,7 +34,21 @@ export function CharacterForm({ draft, onChange, autoFocus }: { draft: CharDraft
       onChange={(e) => onChange({ ...draft, [k]: e.target.value.replace(/[^\d]/g, "") })}
     />
   );
+  const [quick, setQuick] = useState("");
+  /** One box: type "20262 / 20978" (or "27 20262 20978"), or paste the whole home screen. */
+  function onQuick(v: string) {
+    setQuick(v);
+    const h = parseHome(v);
+    if (h.exp === null || h.required === null) return;
+    onChange({ level: h.level !== null ? String(h.level) : draft.level, exp: String(h.exp), required: String(h.required) });
+  }
   return (
+    <>
+    <label className="quick-xp">
+      <span>Type or paste in one box</span>
+      <input className="input mono" inputMode="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+        placeholder="20262 / 20978   or   27 20262 20978" value={quick} onChange={(e) => onQuick(e.target.value)} />
+    </label>
     <div className="char-form">
       <div className="char-lvl">
         <label htmlFor={`${id}-level`}>LVL</label>
@@ -48,5 +63,6 @@ export function CharacterForm({ draft, onChange, autoFocus }: { draft: CharDraft
         </div>
       </div>
     </div>
+    </>
   );
 }

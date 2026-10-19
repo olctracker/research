@@ -7,7 +7,8 @@ A phone-friendly web app for recording Hack EX2 upgrade purchases, working out t
 **Later phases:** formula discovery, cheapest-path optimizer, and reboot planning. Reboot planning stays off until the rules are verified.
 
 **Menu (left side):**
-- **My Device:** your LVL, XP and every software level. Edit it anytime, for example if a purchase wasn't tracked.
+- **My Device:** your LVL, XP and every software level. Edit it anytime, for example if a purchase wasn't tracked. XP can be typed or pasted in one box (`20262 / 20978`).
+- **Device Input:** paste straight from the game (Select all → Copy). *Home* fills LVL, XP and R. *Apps* updates every app level (the (+3) bonus is ignored) and shares each LOCKED key's Keygen price. *Store* shares every next-level price and fixes My Device if it's behind. Works with a friend's screens too (prices only). Warns if a paste is from the wrong screen.
 - **Store Prices** / **Keygen Prices:** the price of each program's **next** level, which is all the game shows. The menu count is how many you can see in game that nobody has entered yet.
 - **Purchase:** pick the software, choose Store or Keygen, check the price, and confirm your LVL and XP. Your device then updates. If the XP reward is known, it's added automatically, levelling you up with the leftover carried over (LVL 26 at 6,232/19,970 + 34,000 → LVL 27 at 20,262). If not, you enter your stats after buying and the app works it out.
 - **History**

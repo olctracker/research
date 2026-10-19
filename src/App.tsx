@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import { needsEntry, nextPriceRows } from "./domain/nextPrices";
 import Dashboard from "./screens/Dashboard";
 import DataTable from "./screens/DataTable";
+import DeviceInput from "./screens/DeviceInput";
 import Device from "./screens/Device";
 import History from "./screens/History";
 import Prices from "./screens/Prices";
@@ -18,6 +19,7 @@ type NavSection = { title: string; items: NavItem[] };
 const ICONS = {
   home: "M3 10.5L12 3l9 7.5M5.5 9v11h13V9M10 20v-5h4v5",
   device: "M4 5h16v11H4zM9 20h6M12 16v4",
+  input: "M9 4h6v3H9zM7 5.5H5v15h14v-15h-2M9 12h6M9 16h4",
   store: "M4 7h16l-1.5 12h-13zM8 7V5a4 4 0 018 0v2",
   keygen: "M15 7a4 4 0 11-3.9 4.9L4 19v-3l1-1h2v-2h2l2.1-2.1A4 4 0 0115 7zM16 9h.01",
   buy: "M12 8v8M8 12h8M12 21a9 9 0 100-18 9 9 0 000 18z",
@@ -37,7 +39,7 @@ function useNav(): NavSection[] {
     const keygen = needsEntry(nextPriceRows(levels, kb, "download"));
     return [
       { title: "Main", items: [{ route: "home", label: "Home", icon: ICONS.home }] },
-      { title: "My info", items: [{ route: "device", label: "My Device", icon: ICONS.device }] },
+      { title: "My info", items: [{ route: "device", label: "My Device", icon: ICONS.device }, { route: "input", label: "Device Input", icon: ICONS.input }] },
       {
         title: "Prices", items: [
           { route: "store", label: "Store Prices", icon: ICONS.store, badge: store, tone: "warn" },
@@ -134,6 +136,7 @@ export default function App() {
     <Shell route={route}>
       {route === "home" && <Dashboard />}
       {route === "device" && <Device onDone={() => go("home")} />}
+      {route === "input" && <DeviceInput />}
       {route === "store" && <Prices method="store" />}
       {route === "keygen" && <Prices method="download" />}
       {route === "buy" && <Purchase />}
