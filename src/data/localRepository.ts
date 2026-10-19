@@ -9,7 +9,7 @@ import {
   checkCredentials, Contribution, Flag, newId, normalizeUsername, ObservationType, PlayerSummary, Repository, SessionUser
 } from "./repository";
 
-interface LocalAccount { userId: string; username: string; pin: string; createdAt: string; isAdmin: boolean }
+interface LocalAccount { userId: string; username: string; pin: string; createdAt: string; isAdmin: boolean; approved?: boolean }
 
 const K = {
   accounts: "hedb.accounts",
@@ -42,7 +42,10 @@ export class LocalRepository implements Repository {
   private user: SessionUser | null = null;
 
   private accounts() { return read<LocalAccount[]>(K.accounts, []); }
-  private toUser(a: LocalAccount): SessionUser { return { userId: a.userId, username: a.username, isAdmin: a.isAdmin }; }
+  private toUser(a: LocalAccount): SessionUser {
+    // Accounts created before approval existed count as approved.
+    return { userId: a.userId, username: a.username, isAdmin: a.isAdmin, approved: a.isAdmin || a.approved !== false };
+  }
   private me(): SessionUser {
     if (!this.user) throw new Error("Not signed in");
     return this.user;
@@ -69,7 +72,8 @@ export class LocalRepository implements Repository {
     const list = this.accounts();
     const u = normalizeUsername(username);
     if (list.some((x) => x.username === u)) throw new Error("That username is taken");
-    const a: LocalAccount = { userId: newId(), username: u, pin, createdAt: new Date().toISOString(), isAdmin: list.length === 0 };
+    const first = list.length === 0;
+    const a: LocalAccount = { userId: newId(), username: u, pin, createdAt: new Date().toISOString(), isAdmin: first, approved: first };
     write(K.accounts, [...list, a]);
     write(K.session, a.userId);
     this.user = this.toUser(a);
@@ -149,7 +153,31 @@ export class LocalRepository implements Repository {
   }
   async listPlayers(): Promise<PlayerSummary[]> {
     this.requireAdmin();
-    return this.accounts().map((a) => ({ userId: a.userId, username: a.username, createdAt: a.createdAt }));
+    return this.accounts().map((a) => ({ userId: a.userId, username: a.username, createdAt: a.createdAt, approved: this.toUser(a).approved, isAdmin: a.isAdmin }));
+  }
+  async setApproved(userId: string, approved: boolean) {
+    this.requireAdmin();
+    write(K.accounts, this.accounts().map((a) => (a.userId === userId ? { ...a, approved } : a)));
+  }
+  async renamePlayer(userId: string, username: string) {
+    this.requireAdmin();
+    const u = normalizeUsername(username);
+    if (!/^[a-z0-9_]{3,20}$/.test(u)) throw new Error("Username must be 3–20 letters, numbers or _");
+    const list = this.accounts();
+    const old = list.find((a) => a.userId === userId);
+    if (!old) throw new Error("Player not found");
+    if (list.some((a) => a.username === u && a.userId !== userId)) throw new Error("That username is taken");
+    write(K.accounts, list.map((a) => (a.userId === userId ? { ...a, username: u } : a)));
+    const o = await this.loadObservations();
+    const relabel = <T extends { contributor: string }>(rows: T[]) => rows.map((r) => (r.contributor === old.username ? { ...r, contributor: u } : r));
+    write(K.obs, { prices: relabel(o.prices), exp: relabel(o.exp), levelReqs: relabel(o.levelReqs) });
+    if (this.user?.userId === userId) this.user = { ...this.user, username: u };
+  }
+  async deletePlayer(userId: string) {
+    this.requireAdmin();
+    if (userId === this.me().userId) throw new Error("You can't delete your own account here");
+    write(K.accounts, this.accounts().filter((a) => a.userId !== userId));
+    try { localStorage.removeItem(K.player(userId)); localStorage.removeItem(K.purchases(userId)); } catch { /* ignore */ }
   }
   async resetPin(userId: string, pin: string) {
     this.requireAdmin();

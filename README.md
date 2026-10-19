@@ -67,13 +67,14 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
    ```sql
    insert into public.app_admins (user_id)
    select user_id from public.player_profiles where username = 'your_username';
+   update public.player_profiles set approved = true where username = 'your_username';
    ```
 3. Sign out and back in. You'll see **ADMIN** next to your name.
 
 As admin you get:
 - **Conflicts:** when players report different values (for example, two different prices for Spam level 6), the dashboard alerts you. **Research → Conflicts** shows each value, who entered it, when, and whether it came from a recorded purchase. Tap **Use …** to choose the right one. The others are marked *rejected*, but they're never deleted.
 - **Records:** mark any single observation confirmed or rejected, and resolve flags.
-- **More → Players:** see everyone who has joined and **reset a forgotten PIN**.
+- **Settings → Players:** approve or reject new sign-ups (new accounts can't see or add data until approved), rename players (their PIN stays the same; works for your own account too, and you stay admin), reset forgotten PINs, and delete accounts (their shared reports stay on record).
 
 ### 4. Install on phones
 
@@ -136,5 +137,4 @@ npm run build                # type-checks and builds into dist/
 - **Deleting a history entry** doesn't roll back your levels. Use **Edit game state** for that.
 - **Moderation is basic:** admins mark records confirmed or rejected and resolve flags. There's no voting or bulk review yet.
 - The site has a `noindex` tag so search engines skip it. Anyone with the link can open the sign-in page, but research data needs an account.
-- Sign-up is open to anyone with the link. Approving new players before they can contribute is not built yet.
 - Offline: the installed app opens without a connection, but needs internet to sign in, load or save data.

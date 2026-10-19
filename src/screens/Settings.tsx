@@ -43,39 +43,98 @@ function ChangePin() {
 }
 
 function Players() {
-  const { repo, user } = useApp();
+  const { repo, user, refreshPlayers, setUsername } = useApp();
   const [players, setPlayers] = useState<PlayerSummary[] | null>(null);
   const [msg, setMsg] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => { repo.listPlayers().then(setPlayers).catch((e) => setMsg({ tone: "bad", text: String(e.message ?? e) })); }, [repo]);
+  const load = () => refreshPlayers().then(setPlayers).catch((e) => setMsg({ tone: "bad", text: String(e?.message ?? e) }));
+  useEffect(() => { load(); }, [repo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function reset(p: PlayerSummary) {
+  async function act(id: string, fn: () => Promise<void>, ok: string) {
+    setBusy(id); setMsg(null);
+    try { await fn(); setMsg({ tone: "good", text: ok }); await load(); }
+    catch (e) { setMsg({ tone: "bad", text: e instanceof Error ? e.message : String(e) }); }
+    finally { setBusy(null); }
+  }
+
+  const approve = (p: PlayerSummary) => act(p.userId, () => repo.setApproved(p.userId, true), `${p.username} approved. They can sign in and start now.`);
+  const reject = (p: PlayerSummary) => {
+    if (!confirm(`Reject and delete the account "${p.username}"?`)) return;
+    act(p.userId, () => repo.deletePlayer(p.userId), `${p.username}'s sign-up was rejected and removed.`);
+  };
+  const remove = (p: PlayerSummary) => {
+    if (!confirm(`Delete ${p.username}'s account?\n\nTheir device, purchases and sign-in are removed for good. Prices and XP they shared stay on record under "${p.username}".`)) return;
+    act(p.userId, () => repo.deletePlayer(p.userId), `${p.username}'s account was deleted.`);
+  };
+  const rename = (p: PlayerSummary) => {
+    const name = prompt(`New username for ${p.username} (3–20 letters, numbers or _).\nTheir PIN stays the same; they sign in with the new name.`, p.username);
+    if (name === null) return;
+    const u = name.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(u)) { setMsg({ tone: "bad", text: "Username must be 3–20 letters, numbers or _" }); return; }
+    if (u === p.username) return;
+    act(p.userId, async () => { await repo.renamePlayer(p.userId, u); if (p.userId === user.userId) setUsername(u); },
+      p.userId === user.userId ? `You're now ${u}. Sign in with the new name next time — same PIN.` : `${p.username} is now ${u}. Tell them to sign in with the new name — same PIN.`);
+  };
+  const reset = (p: PlayerSummary) => {
     const pin = prompt(`New 4-digit PIN for ${p.username}:`);
     if (pin === null) return;
     if (!/^\d{4}$/.test(pin)) { setMsg({ tone: "bad", text: "PIN must be exactly 4 digits" }); return; }
-    try {
-      await repo.resetPin(p.userId, pin);
-      setMsg({ tone: "good", text: `PIN for ${p.username} reset. Tell them their new PIN privately.` });
-    } catch (e) { setMsg({ tone: "bad", text: e instanceof Error ? e.message : String(e) }); }
-  }
+    act(p.userId, () => repo.resetPin(p.userId, pin), `PIN for ${p.username} reset. Tell them their new PIN privately.`);
+  };
+
+  const pending = (players ?? []).filter((p) => !p.approved && !p.isAdmin);
+  const members = (players ?? []).filter((p) => p.approved || p.isAdmin);
 
   return (
-    <Card title={`Players${players ? ` (${players.length})` : ""}`}>
-      {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
-      {!players ? <p className="muted">Loading…</p> : (
-        <ul className="rows">
-          {players.map((p) => (
-            <li key={p.userId} className="row">
-              <div className="grow">
-                <div className="row-title">{p.username}{p.userId === user.userId && <span className="badge rel-confirmed" style={{ marginLeft: 8 }}>You · admin</span>}</div>
-                <div className="hint">Joined {new Date(p.createdAt).toLocaleDateString()}</div>
-              </div>
-              {p.userId !== user.userId && <button className="btn sm ghost" onClick={() => reset(p)}>Reset PIN</button>}
-            </li>
-          ))}
-        </ul>
+    <>
+      {pending.length > 0 && (
+        <Card title={<>Waiting for approval <span className="nav-badge warn inline-badge">{pending.length}</span></>}>
+          <ul className="rows">
+            {pending.map((p) => (
+              <li key={p.userId} className="row player-row">
+                <div className="grow">
+                  <div className="row-title">{p.username}</div>
+                  <div className="hint">Signed up {new Date(p.createdAt).toLocaleString()}</div>
+                </div>
+                <div className="player-actions">
+                  <button className="btn sm primary" disabled={busy === p.userId} onClick={() => approve(p)}>Approve</button>
+                  <button className="btn sm ghost" disabled={busy === p.userId} onClick={() => reject(p)}>Reject</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
-    </Card>
+      <Card title={`Players${players ? ` (${members.length})` : ""}`}>
+        {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
+        {!players ? <p className="muted">Loading…</p> : (
+          <ul className="rows">
+            {members.map((p) => {
+              const me = p.userId === user.userId;
+              return (
+                <li key={p.userId} className="row player-row">
+                  <div className="grow">
+                    <div className="row-title">
+                      {p.username}
+                      {me && <span className="badge rel-repeated" style={{ marginLeft: 8 }}>You</span>}
+                      {p.isAdmin && <span className="badge rel-confirmed" style={{ marginLeft: 8 }}>Admin</span>}
+                    </div>
+                    <div className="hint">Joined {new Date(p.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div className="player-actions">
+                    <button className="btn sm ghost" disabled={busy === p.userId} onClick={() => rename(p)}>Rename</button>
+                    {!me && <button className="btn sm ghost" disabled={busy === p.userId} onClick={() => reset(p)}>Reset PIN</button>}
+                    {!me && !p.isAdmin && <button className="btn sm danger" disabled={busy === p.userId} onClick={() => remove(p)}>Delete</button>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="hint">Renaming keeps the same PIN, admin role and shared data. You can't delete your own account here.</p>
+      </Card>
+    </>
   );
 }
 

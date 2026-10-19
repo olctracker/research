@@ -1,12 +1,13 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { makeRepository } from "./data";
-import type { Contribution, Repository, SessionUser } from "./data/repository";
+import type { Contribution, PlayerSummary, Repository, SessionUser } from "./data/repository";
 import { newId } from "./data/repository";
 import { newLevelReqs } from "./domain/record";
 import { findConflicts, ConflictGroup } from "./domain/conflicts";
 import { Knowledge } from "./domain/knowledge";
 import type { ObservationSet, PlayerState, PurchaseRecord } from "./domain/types";
 import Login from "./screens/Login";
+import Pending from "./screens/Pending";
 import { Brand } from "./ui/Brand";
 
 interface AppState {
@@ -24,6 +25,12 @@ interface AppState {
   contribute(c: Contribution): Promise<void>;
   reloadObservations(): Promise<void>;
   signOut(): Promise<void>;
+  /** Admin: sign-ups waiting for approval (drives the menu badge). */
+  pendingCount: number;
+  /** Admin: reload the player list (and the pending count). */
+  refreshPlayers(): Promise<PlayerSummary[]>;
+  /** After the admin renames their own account. */
+  setUsername(name: string): void;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -40,6 +47,7 @@ type Boot =
   | { phase: "loading" }
   | { phase: "error"; message: string }
   | { phase: "signed_out"; repo: Repository }
+  | { phase: "pending"; repo: Repository; user: SessionUser }
   | { phase: "ready"; repo: Repository; user: SessionUser };
 
 // Started once per page load, so React StrictMode's double effect can't run it twice.
@@ -64,8 +72,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [player, setPlayer] = useState<PlayerState | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [observations, setObservations] = useState<ObservationSet>(EMPTY);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const enter = useCallback(async (repo: Repository, user: SessionUser) => {
+    // New accounts wait for the admin before they can see or add anything.
+    if (!user.approved && !user.isAdmin) { setBoot({ phase: "pending", repo, user }); return; }
+    if (user.isAdmin) repo.listPlayers().then((ps) => setPendingCount(ps.filter((p) => !p.approved && !p.isAdmin).length)).catch(() => {});
     const d = await loadData(repo);
     // Catch up: share this player's current level "XP needed" if they never have (older data, edits).
     if (d.player?.setupComplete) {
@@ -131,6 +143,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await reloadObservations();
       },
       reloadObservations,
+      pendingCount,
+      async refreshPlayers() {
+        const ps = await r.listPlayers();
+        setPendingCount(ps.filter((p) => !p.approved && !p.isAdmin).length);
+        return ps;
+      },
+      setUsername(name) {
+        setBoot({ phase: "ready", repo: r, user: { ...boot.user, username: name } });
+        setPlayer((p) => (p ? { ...p, alias: name } : p));
+      },
       async signOut() {
         await r.signOut();
         setPlayer(null); setPurchases([]); setObservations(EMPTY);
@@ -138,7 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setBoot({ phase: "signed_out", repo: r });
       }
     };
-  }, [boot, player, purchases, observations, kb, conflicts, reloadObservations]);
+  }, [boot, player, purchases, observations, kb, conflicts, reloadObservations, pendingCount]);
 
   if (boot.phase === "loading") {
     return <div className="splash"><Brand large /><div className="spinner" aria-label="Loading" /></div>;
@@ -151,6 +173,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <p>{boot.message}</p>
         <button className="btn primary" onClick={() => location.reload()}>Try again</button>
       </div>
+    );
+  }
+  if (boot.phase === "pending") {
+    const b = boot;
+    return (
+      <Pending username={b.user.username}
+        onCheck={async () => { const u = await b.repo.init(); if (u) await enter(b.repo, u); return !!u && (u.approved || u.isAdmin); }}
+        onSignOut={async () => { await b.repo.signOut(); setBoot({ phase: "signed_out", repo: b.repo }); }} />
     );
   }
   if (boot.phase === "signed_out") {

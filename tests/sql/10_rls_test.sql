@@ -17,9 +17,17 @@ grant execute on function pg_temp.expect_error(text, text) to anon, authenticate
 -- ---------- accounts (as Supabase Auth would create them) ----------
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-1111-1111-111111111111', 'alice@users.hedb.app', '{"username":"alice"}'),
-  ('22222222-2222-2222-2222-222222222222', 'bob@users.hedb.app',   '{"username":"bob"}');
+  ('22222222-2222-2222-2222-222222222222', 'bob@users.hedb.app',   '{"username":"bob"}'),
+  ('33333333-3333-3333-3333-333333333333', 'carl@users.hedb.app',  '{"username":"carl"}');
+insert into auth.identities (user_id, provider, identity_data) values
+  ('22222222-2222-2222-2222-222222222222', 'email', '{"email":"bob@users.hedb.app"}');
 do $$ begin
-  if (select count(*) from public.player_profiles) <> 2 then raise exception 'FAILED: sign-up trigger did not create profiles'; end if;
+  if exists (select 1 from public.player_profiles where approved) then raise exception 'FAILED: new accounts should start unapproved'; end if;
+end $$;
+-- carl stays pending; alice and bob are approved for the rest of the tests
+update public.player_profiles set approved = true where username in ('alice', 'bob');
+do $$ begin
+  if (select count(*) from public.player_profiles) <> 3 then raise exception 'FAILED: sign-up trigger did not create profiles'; end if;
 end $$;
 select pg_temp.expect_error($$insert into auth.users (id, email, raw_user_meta_data) values (gen_random_uuid(), 'x@users.hedb.app', '{"username":"Bad Name!"}')$$, 'invalid username');
 select pg_temp.expect_error($$insert into auth.users (id, email, raw_user_meta_data) values (gen_random_uuid(), 'alice2@users.hedb.app', '{"username":"alice"}')$$, 'duplicate username');
@@ -44,6 +52,18 @@ select pg_temp.expect_error($$insert into public.price_observations (upgrade_id,
 select pg_temp.expect_error($$select * from public.player_progress$$, 'anon read player_progress');
 reset role;
 
+-- ---------- pending user (not approved yet) ----------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if exists (select 1 from public.price_observations) then raise exception 'FAILED: pending user can read research'; end if;
+  if (select approved from public.player_profiles where user_id = auth.uid()) then raise exception 'FAILED: pending user sees approved'; end if;
+end $$;
+select pg_temp.expect_error($$insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type) values ('spam','store',5,6,1,'per_level')$$, 'pending user adds research');
+select pg_temp.expect_error($$insert into public.player_progress (level, exp, required) values (1, 0, 100)$$, 'pending user saves device');
+select pg_temp.expect_error($$select public.admin_set_approved('33333333-3333-3333-3333-333333333333', true)$$, 'pending user approves self');
+reset role;
+
 -- ---------- user A ----------
 set role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
@@ -60,6 +80,8 @@ end $$;
 select pg_temp.expect_error($$update public.player_profiles set username = 'mallory'$$, 'rename own username');
 select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '1234')$$, 'non-admin reset PIN');
 select pg_temp.expect_error($$select public.admin_resolve('price_observations', array[]::uuid[], array[]::uuid[])$$, 'non-admin resolve conflict');
+select pg_temp.expect_error($$select public.admin_rename('22222222-2222-2222-2222-222222222222', 'mallory')$$, 'non-admin rename');
+select pg_temp.expect_error($$select public.admin_delete_user('22222222-2222-2222-2222-222222222222')$$, 'non-admin delete');
 insert into public.level_requirement_observations (level, exp_required) values (4, 130);
 
 select pg_temp.expect_error($$insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, status) values ('spam','store',6,7,700,'per_level','confirmed')$$, 'self-confirm an observation');
@@ -110,8 +132,26 @@ select public.admin_resolve('price_observations',
 update public.observation_flags set resolved = true;
 select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '4321');
 do $$ begin
-  if (select count(*) from public.player_profiles) <> 2 then raise exception 'FAILED: admin should see all profiles'; end if;
+  if (select count(*) from public.player_profiles) <> 3 then raise exception 'FAILED: admin should see all profiles'; end if;
 end $$;
+-- approve the pending player
+select public.admin_set_approved('33333333-3333-3333-3333-333333333333', true);
+-- rename bob -> robert: sign-in email and earlier reports follow
+reset role;  -- set up an earlier report by bob (as the database owner)
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, contributor_id, contributor_alias)
+  values ('spam','store',6,7,777777,'per_level','22222222-2222-2222-2222-222222222222','bob');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+select public.admin_rename('22222222-2222-2222-2222-222222222222', 'Robert');
+select pg_temp.expect_error($$select public.admin_rename('33333333-3333-3333-3333-333333333333', 'robert')$$, 'rename to a taken name');
+select pg_temp.expect_error($$select public.admin_rename('33333333-3333-3333-3333-333333333333', 'no spaces!')$$, 'rename to an invalid name');
+-- admin renames themselves and stays admin
+select public.admin_rename('11111111-1111-1111-1111-111111111111', 'hilltop');
+do $$ begin
+  if not public.is_admin() then raise exception 'FAILED: admin lost admin after renaming self'; end if;
+end $$;
+select pg_temp.expect_error($$select public.admin_delete_user('11111111-1111-1111-1111-111111111111')$$, 'admin deletes own account');
+select public.admin_delete_user('33333333-3333-3333-3333-333333333333');
 select pg_temp.expect_error($$select public.admin_reset_pin('22222222-2222-2222-2222-222222222222', '12a4')$$, 'bad PIN format');
 reset role;
 do $$ begin
@@ -123,6 +163,16 @@ end $$;
 do $$ begin
   if not exists (select 1 from public.price_observations where cost = 123456 and status = 'confirmed') then raise exception 'FAILED: admin could not confirm'; end if;
   if exists (select 1 from public.observation_flags where not resolved) then raise exception 'FAILED: admin could not resolve flag'; end if;
+end $$;
+
+do $$ begin
+  if (select username from public.player_profiles where user_id = '22222222-2222-2222-2222-222222222222') <> 'robert' then raise exception 'FAILED: rename profile'; end if;
+  if (select email from auth.users where id = '22222222-2222-2222-2222-222222222222') <> 'robert@users.hedb.app' then raise exception 'FAILED: rename sign-in email'; end if;
+  if (select identity_data->>'email' from auth.identities where user_id = '22222222-2222-2222-2222-222222222222') <> 'robert@users.hedb.app' then raise exception 'FAILED: rename identity'; end if;
+  if (select contributor_alias from public.price_observations where cost = 777777) <> 'robert' then raise exception 'FAILED: earlier reports not relabelled'; end if;
+  if (select username from public.player_profiles where user_id = '11111111-1111-1111-1111-111111111111') <> 'hilltop' then raise exception 'FAILED: self rename'; end if;
+  if exists (select 1 from auth.users where id = '33333333-3333-3333-3333-333333333333') then raise exception 'FAILED: delete user'; end if;
+  if exists (select 1 from public.player_profiles where user_id = '33333333-3333-3333-3333-333333333333') then raise exception 'FAILED: deleted profile remains'; end if;
 end $$;
 
 select 'ALL RLS TESTS PASSED' as result;

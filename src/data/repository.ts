@@ -11,12 +11,16 @@ export interface SessionUser {
   userId: string;
   username: string;
   isAdmin: boolean;
+  /** New accounts wait for the admin's approval before they can see or add data. */
+  approved: boolean;
 }
 
 export interface PlayerSummary {
   userId: string;
   username: string;
   createdAt: string;
+  approved: boolean;
+  isAdmin: boolean;
 }
 
 export interface Flag {
@@ -61,6 +65,11 @@ export interface Repository {
   resolveFlag(id: string): Promise<void>;
   listPlayers(): Promise<PlayerSummary[]>;
   resetPin(userId: string, pin: string): Promise<void>;
+  setApproved(userId: string, approved: boolean): Promise<void>;
+  /** Changes a player's username (their sign-in name). Their PIN stays the same. */
+  renamePlayer(userId: string, username: string): Promise<void>;
+  /** Deletes a player's account and private data. Shared reports stay on record. */
+  deletePlayer(userId: string): Promise<void>;
 }
 
 export const USERNAME_RULE = /^[a-z0-9_]{3,20}$/;

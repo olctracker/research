@@ -8,7 +8,7 @@ import { Card, fmt, Notice, Progress } from "../ui/components";
 import { go } from "../ui/router";
 
 export default function Dashboard() {
-  const { player, purchases, kb, repo, conflicts, isAdmin } = useApp();
+  const { player, purchases, kb, repo, conflicts, isAdmin, pendingCount } = useApp();
   const coverage = useMemo(() => summarize(computeCompleteness(kb)), [kb]);
   const levels = player?.levels ?? {};
   const storeMissing = useMemo(() => needsEntry(nextPriceRows(levels, kb, "store")), [levels, kb]);
@@ -21,6 +21,13 @@ export default function Dashboard() {
     <div className="screen">
       {repo.mode === "local" && (
         <Notice tone="warn">Test mode: data is saved only in this browser. Connect Supabase to share with your crew (see README).</Notice>
+      )}
+      {isAdmin && pendingCount > 0 && (
+        <button className="alert-card" onClick={() => go("settings")}>
+          <span className="alert-count mono">{pendingCount}</span>
+          <span className="grow"><b>New sign-up{pendingCount === 1 ? "" : "s"} waiting for approval</b><span className="hint block">Tap to approve or reject in Settings → Players.</span></span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
       {isAdmin && conflicts.length > 0 && (
         <button className="alert-card" onClick={() => go("research")}>

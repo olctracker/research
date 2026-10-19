@@ -156,6 +156,14 @@ create table if not exists public.player_profiles (
   created_at timestamptz not null default now()
 );
 
+-- New accounts wait for the admin to approve them before they can see or add data.
+alter table public.player_profiles add column if not exists approved boolean not null default false;
+
+create or replace function public.is_approved() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.player_profiles where user_id = auth.uid() and approved) or public.is_admin();
+$$;
+
 -- A profile is created automatically when an account signs up (username comes from sign-up metadata).
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -275,20 +283,20 @@ declare t text;
 begin
   foreach t in array array['price_observations','exp_observations','level_requirement_observations'] loop
     execute format('drop policy if exists obs_read on public.%I', t);
-    execute format('create policy obs_read on public.%I for select to authenticated using (true)', t);
+    execute format('create policy obs_read on public.%I for select to authenticated using (public.is_approved())', t);
     execute format('drop policy if exists obs_insert on public.%I', t);
     execute format($p$create policy obs_insert on public.%I for insert to authenticated
-                     with check (contributor_id = auth.uid() and status = 'observed')$p$, t);
+                     with check (contributor_id = auth.uid() and status = 'observed' and public.is_approved())$p$, t);
     execute format('drop policy if exists obs_admin_update on public.%I', t);
     execute format('create policy obs_admin_update on public.%I for update to authenticated using (public.is_admin()) with check (public.is_admin())', t);
   end loop;
 end $$;
 
 drop policy if exists flags_read on public.observation_flags;
-create policy flags_read on public.observation_flags for select to authenticated using (true);
+create policy flags_read on public.observation_flags for select to authenticated using (public.is_approved());
 drop policy if exists flags_insert on public.observation_flags;
 create policy flags_insert on public.observation_flags for insert to authenticated
-  with check (flagged_by = auth.uid() and resolved = false);
+  with check (flagged_by = auth.uid() and resolved = false and public.is_approved());
 drop policy if exists flags_admin_update on public.observation_flags;
 create policy flags_admin_update on public.observation_flags for update to authenticated
   using (public.is_admin()) with check (public.is_admin());
@@ -299,7 +307,7 @@ declare t text;
 begin
   foreach t in array array['player_progress','player_upgrade_state','purchase_history'] loop
     execute format('drop policy if exists owner_all on public.%I', t);
-    execute format('create policy owner_all on public.%I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+    execute format('create policy owner_all on public.%I for all to authenticated using (user_id = auth.uid() and public.is_approved()) with check (user_id = auth.uid() and public.is_approved())', t);
   end loop;
 end $$;
 
@@ -365,6 +373,53 @@ begin
   where username = (select username from public.player_profiles where user_id = p_user_id);
 end $$;
 
+-- Admin: approve (or un-approve) a player.
+create or replace function public.admin_set_approved(p_user_id uuid, p_approved boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  update public.player_profiles set approved = p_approved where user_id = p_user_id;
+  if not found then raise exception 'Player not found'; end if;
+end $$;
+
+-- Admin: change a player's username (also their sign-in name). Their PIN doesn't change.
+-- Earlier reports they shared are relabelled so everything stays linked to them.
+create or replace function public.admin_rename(p_user_id uuid, p_username text) returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare u text := lower(trim(p_username)); old text;
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if u !~ '^[a-z0-9_]{3,20}$' then raise exception 'Username must be 3–20 letters, numbers or _'; end if;
+  select username into old from public.player_profiles where user_id = p_user_id;
+  if not found then raise exception 'Player not found'; end if;
+  if u = old then return; end if;
+  if exists (select 1 from public.player_profiles where username = u) then raise exception 'That username is taken'; end if;
+  update public.player_profiles set username = u where user_id = p_user_id;
+  update auth.users set email = u || '@users.hedb.app',
+    raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('username', u), updated_at = now()
+    where id = p_user_id;
+  update auth.identities set identity_data = coalesce(identity_data, '{}'::jsonb) || jsonb_build_object('email', u || '@users.hedb.app')
+    where user_id = p_user_id and provider = 'email';
+  update public.price_observations set contributor_alias = u where contributor_id = p_user_id;
+  update public.exp_observations set contributor_alias = u where contributor_id = p_user_id;
+  update public.level_requirement_observations set contributor_alias = u where contributor_id = p_user_id;
+  delete from public.login_attempts where username in (old, u);
+end $$;
+
+-- Admin: delete a player's account. Their private data goes with it; reports they shared
+-- stay on record under their last username. The admin can't delete their own account here.
+create or replace function public.admin_delete_user(p_user_id uuid) returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare old text;
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if p_user_id = auth.uid() then raise exception 'You can''t delete your own account here'; end if;
+  select username into old from public.player_profiles where user_id = p_user_id;
+  delete from public.login_attempts where username = old;
+  delete from auth.users where id = p_user_id;
+  if not found then raise exception 'Player not found'; end if;
+end $$;
+
 -- Admin: settle a conflict by confirming the chosen observations and rejecting the others.
 create or replace function public.admin_resolve(p_table text, p_keep uuid[], p_reject uuid[]) returns void
 language plpgsql security definer set search_path = public as $$
@@ -378,10 +433,12 @@ begin
 end $$;
 
 revoke all on function public.login_wait(text), public.login_failed(text), public.login_ok(),
-  public.admin_reset_pin(uuid, text), public.admin_resolve(text, uuid[], uuid[]) from public;
+  public.admin_reset_pin(uuid, text), public.admin_resolve(text, uuid[], uuid[]),
+  public.admin_set_approved(uuid, boolean), public.admin_rename(uuid, text), public.admin_delete_user(uuid) from public;
 grant execute on function public.login_wait(text), public.login_failed(text) to anon, authenticated;
 grant execute on function public.login_ok(), public.admin_reset_pin(uuid, text),
-  public.admin_resolve(text, uuid[], uuid[]) to authenticated;
+  public.admin_resolve(text, uuid[], uuid[]), public.admin_set_approved(uuid, boolean),
+  public.admin_rename(uuid, text), public.admin_delete_user(uuid), public.is_approved() to authenticated;
 
 -- Table privileges (RLS above still decides which rows). Start from nothing, then grant.
 revoke all on public.upgrade_catalog, public.app_admins, public.price_observations, public.exp_observations,

@@ -64,13 +64,14 @@ export class SupabaseRepository implements Repository {
   /** Loads username and admin flag for the signed-in account. */
   private async describe(userId: string): Promise<SessionUser> {
     const [prof, admin] = await Promise.all([
-      this.sb.from("player_profiles").select("username").eq("user_id", userId).maybeSingle(),
+      this.sb.from("player_profiles").select("username, approved").eq("user_id", userId).maybeSingle(),
       this.sb.from("app_admins").select("user_id").eq("user_id", userId).maybeSingle()
     ]);
-    const username = ((check(prof) as Row | null)?.username as string) ?? "";
+    const p = check(prof) as Row | null;
+    const username = (p?.username as string) ?? "";
     this.userId = userId;
     this.username = username;
-    return { userId, username, isAdmin: !!admin.data };
+    return { userId, username, isAdmin: !!admin.data, approved: !!p?.approved };
   }
 
   async init() {
@@ -239,11 +240,31 @@ export class SupabaseRepository implements Repository {
   }
 
   async listPlayers(): Promise<PlayerSummary[]> {
-    const rows = check(await this.sb.from("player_profiles").select("user_id, username, created_at").order("username")) as Row[];
-    return rows.map((r) => ({ userId: r.user_id as string, username: r.username as string, createdAt: r.created_at as string }));
+    const [rows, admins] = await Promise.all([
+      this.sb.from("player_profiles").select("user_id, username, created_at, approved").order("username"),
+      this.sb.from("app_admins").select("user_id")
+    ]);
+    const adminIds = new Set(((check(admins) as Row[]) ?? []).map((a) => a.user_id as string));
+    return (check(rows) as Row[]).map((r) => ({
+      userId: r.user_id as string, username: r.username as string, createdAt: r.created_at as string,
+      approved: !!r.approved, isAdmin: adminIds.has(r.user_id as string)
+    }));
   }
 
   async resetPin(userId: string, pin: string) {
     check(await this.sb.rpc("admin_reset_pin", { p_user_id: userId, p_pin: pin }));
+  }
+
+  async setApproved(userId: string, approved: boolean) {
+    check(await this.sb.rpc("admin_set_approved", { p_user_id: userId, p_approved: approved }));
+  }
+
+  async renamePlayer(userId: string, username: string) {
+    check(await this.sb.rpc("admin_rename", { p_user_id: userId, p_username: normalizeUsername(username) }));
+    if (userId === this.userId) this.username = normalizeUsername(username);
+  }
+
+  async deletePlayer(userId: string) {
+    check(await this.sb.rpc("admin_delete_user", { p_user_id: userId }));
   }
 }

@@ -30,7 +30,7 @@ const ICONS = {
 const Icon = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true" className="nav-icon"><path d={d} /></svg>;
 
 function useNav(): NavSection[] {
-  const { player, kb, conflicts, isAdmin } = useApp();
+  const { player, kb, conflicts, isAdmin, pendingCount } = useApp();
   return useMemo(() => {
     const levels = player?.levels ?? {};
     const store = needsEntry(nextPriceRows(levels, kb, "store"));
@@ -56,9 +56,9 @@ function useNav(): NavSection[] {
           { route: "research", label: "Coverage & Conflicts", icon: ICONS.research, badge: isAdmin ? conflicts.length : 0, tone: "bad" }
         ]
       },
-      { title: "You", items: [{ route: "settings", label: "Settings", icon: ICONS.settings }] }
+      { title: "You", items: [{ route: "settings", label: "Settings", icon: ICONS.settings, badge: isAdmin ? pendingCount : 0, tone: "bad" }] }
     ] as NavSection[];
-  }, [player, kb, conflicts, isAdmin]);
+  }, [player, kb, conflicts, isAdmin, pendingCount]);
 }
 
 function NavList({ sections, route, onPick }: { sections: NavSection[]; route: Route; onPick: () => void }) {

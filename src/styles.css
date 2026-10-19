@@ -367,3 +367,9 @@ select.input { appearance: auto; }
 .bad-text { color: var(--bad); }
 .reboot-row { border-top: 1px solid var(--line); margin-top: 4px; }
 .reboot-badge { margin-left: 10px; vertical-align: middle; font-size: 0.75rem; }
+.pending { text-align: center; align-items: center; }
+.pending h1 { margin: 0; }
+.pending-icon { font-size: 2.4rem; }
+.player-row { align-items: flex-start; flex-wrap: wrap; }
+.player-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.inline-badge { display: inline-grid; margin-left: 8px; vertical-align: middle; }
