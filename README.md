@@ -9,7 +9,7 @@ A phone-friendly web app for recording Hack EX2 upgrade purchases, working out t
 **Menu (left side):**
 - **My Device:** your LVL, XP and every software level. Edit it anytime, for example if a purchase wasn't tracked.
 - **Store Prices** / **Keygen Prices:** the price of each program's **next** level, which is all the game shows. The menu count is how many you can see in game that nobody has entered yet.
-- **Purchase:** pick the software, choose Store or Keygen, check the price, and confirm your LVL and XP. Your device then updates. If the XP reward is known, it's added automatically, levelling you up when you pass the target (XP keeps counting; only the target moves up). If not, you enter your stats after buying and the app works it out.
+- **Purchase:** pick the software, choose Store or Keygen, check the price, and confirm your LVL and XP. Your device then updates. If the XP reward is known, it's added automatically, levelling you up with the leftover carried over (LVL 26 at 6,232/19,970 + 34,000 → LVL 27 at 20,262). If not, you enter your stats after buying and the app works it out.
 - **History**
 - **Data Table:** pick a program (or Character levels) to see every level's store and Keygen price and XP, so you know exactly what's missing.
 - **Coverage & Conflicts**
@@ -124,7 +124,7 @@ npm run build                # type-checks and builds into dist/
 - **Download data model:** one transaction. Cost is the observed combined total. If only per-level download *components* are known, their sum is shown, clearly labelled as an estimate. EXP counts the destination level only.
 - **Keygen:** a download to level N needs Keygen N or higher (working rule, still being verified).
 - **Defensive discount (15%):** applies to Firewall, Password Encryptor, Antivirus, Proxy and Trace store purchases. Prices are stored as the final amount charged, and the rounding rule is still being researched.
-- **Character EXP:** XP is a running total that doesn't reset on level-up; only the target after the "/" moves up (LVL 1 at 150/200 + 100 → LVL 2 at 250/400). So XP earned is simply after − before. *(Observed, still being confirmed.)*
+- **Character EXP:** XP carries over. Passing the target levels you up and only the leftover counts toward the next level (LVL 26 at 6,232/19,970 + 34,000 → LVL 27 at 20,262/20,978, confirmed in game). It's worked out level by level using each level's own requirement. If any requirement in between is unknown, the result is shown as "at least X", never as a made-up exact number.
 - **Reliability** of each value: Unknown → Observed once → Repeated observation → Confirmed (admin only). Disagreeing observations are all kept and shown as a **conflict**. They are never averaged.
 
 ---

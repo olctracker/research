@@ -79,40 +79,47 @@ describe("Catalog", () => {
 });
 
 describe("EXP calculations", () => {
-  test("XP is a running total: LVL 1 at 150/200 + 100 → LVL 2 at 250/400 means 100 XP", () => {
-    const r = inferExpGained({ level: 1, exp: 150, required: 200 }, { level: 2, exp: 250, required: 400 }, noReq);
+  test("4 at 90/130 → 5 at 10/150 means 50 EXP", () => {
+    const r = inferExpGained({ level: 4, exp: 90, required: 130 }, { level: 5, exp: 10, required: 150 }, noReq);
     assert.equal(r.status, "exact");
-    assert.equal(r.exp, 100);
+    assert.equal(r.exp, 50);
+    assert.deepEqual(r.breakdown.map((b) => b.amount), [40, 10]);
   });
 
-  test("multi-level jumps don't need the in-between targets", () => {
-    const r = inferExpGained({ level: 5, exp: 80, required: 100 }, { level: 8, exp: 430, required: 500 }, noReq);
+  test("multi-level uses each level's own requirement", () => {
+    const reqs: Record<number, number> = { 5: 100, 6: 150, 7: 200 };
+    const r = inferExpGained({ level: 5, exp: 80, required: 100 }, { level: 8, exp: 30, required: null }, (l) => reqs[l] ?? null);
     assert.equal(r.status, "exact");
-    assert.equal(r.exp, 350);
+    assert.equal(r.exp, 20 + 150 + 200 + 30);
   });
 
-  test("levelling up below the old target is flagged", () => {
-    assert.equal(inferExpGained({ level: 1, exp: 150, required: 200 }, { level: 2, exp: 50, required: 400 }, noReq).status, "invalid");
-  });
-
-  test("projection walks the moving targets without subtracting", () => {
-    const reqs: Record<number, number> = { 2: 400, 3: 700 };
-    const p = applyExp({ level: 1, exp: 150, required: 200 }, 300, (l) => reqs[l] ?? null);
+  test("flat 100-per-level example: 80/100 + 250 → 3 levels and 30 EXP", () => {
+    const p = applyExp({ level: 1, exp: 80, required: 100 }, 250, () => 100);
     assert.equal(p.status, "exact");
-    assert.equal(p.levelsGained, 2); // 450 ≥ 200 and ≥ 400, < 700
-    assert.equal(p.state?.exp, 450);
-    assert.equal(p.state?.required, 700);
+    assert.equal(p.levelsGained, 3);
+    assert.equal(p.state?.exp, 30);
   });
 
-  test("unknown target on the way → incomplete projection, never a guess", () => {
-    const p = applyExp({ level: 1, exp: 150, required: 200 }, 300, () => null);
-    assert.equal(p.status, "incomplete");
+  test("increasing thresholds change the projection", () => {
+    const reqs: Record<number, number> = { 2: 120, 3: 140 };
+    const p = applyExp({ level: 1, exp: 80, required: 100 }, 250, (l) => reqs[l] ?? null);
+    assert.equal(p.status, "exact");
+    assert.equal(p.levelsGained, 2); // 20 + 120 = 140, 110 left < 140
+    assert.equal(p.state?.exp, 110);
+  });
+
+  test("unknown intermediate requirement → incomplete, never a fake exact number", () => {
+    const r = inferExpGained({ level: 5, exp: 80, required: 100 }, { level: 8, exp: 30, required: null }, (l) => (l === 6 ? 150 : null));
+    assert.equal(r.status, "incomplete");
+    assert.equal(r.exp, null);
+    assert.deepEqual(r.missingLevels, [7]);
+    assert.ok((r.atLeast ?? 0) > 20 + 150 + 30);
   });
 
   test("bad inputs are invalid", () => {
     assert.equal(inferExpGained({ level: 5, exp: 10, required: 100 }, { level: 4, exp: 0, required: 90 }, noReq).status, "invalid");
     assert.equal(inferExpGained({ level: 5, exp: 50, required: 100 }, { level: 5, exp: 40, required: 100 }, noReq).status, "invalid");
-    assert.equal(inferExpGained({ level: 5, exp: 120, required: 100 }, { level: 6, exp: 130, required: 200 }, noReq).status, "invalid");
+    assert.equal(inferExpGained({ level: 5, exp: 120, required: 100 }, { level: 6, exp: 0, required: 100 }, noReq).status, "invalid");
   });
 
   test("download EXP uses destination-level reward only", () => {
@@ -257,7 +264,7 @@ describe("Data integrity", () => {
     const plan = planPurchase({ entry: getEntry("trace"), method: "store", currentLevel: 3, targetLevel: 4, keygenLevel: 0, kb });
     const res = buildRecord({
       plan, entered: { [missingKey(plan.missing[0])]: 850 }, before: { level: 4, exp: 90, required: 130 },
-      after: { level: 5, exp: 140, required: 250 }, keygenLevel: null, kb, reqFor: kb.reqFn(), contributor: "alice", notes: "n", now: "t", newId: id
+      after: { level: 5, exp: 10, required: 150 }, keygenLevel: null, kb, reqFor: kb.reqFn(), contributor: "alice", notes: "n", now: "t", newId: id
     });
     const price = res.candidates.find((c) => c.type === "price");
     assert.ok(price && price.type === "price");
@@ -375,16 +382,22 @@ describe("Next-level prices and XP carry-over", () => {
     assert.equal(nextPriceRows({ ...defaultLevels(), proxy: 6, keygen: 7 }, kb, "download").find((r) => r.entry.id === "proxy")!.status, "known");
   });
 
-  test("XP over the target levels up and keeps counting (LVL 1 at 150/200 + 100 → LVL 2 at 250/400)", () => {
-    const r = addXp({ level: 1, exp: 150, required: 200 }, 100, (l) => (l === 2 ? 400 : null));
-    assert.deepEqual(r, { level: 2, exp: 250, required: 400, levelsGained: 1 });
+  test("XP over the limit levels up and carries the rest (20 at 234/589 + 400 → 21 at 45)", () => {
+    const r = addXp({ level: 20, exp: 234, required: 589 }, 400, (l) => (l === 21 ? 650 : null));
+    assert.deepEqual(r, { level: 21, exp: 45, required: 650, levelsGained: 1 });
   });
 
-  test("unknown target at the new level is left for the player to fill in", () => {
+  test("unknown requirement at the new level is left for the player to fill in", () => {
     const r = addXp({ level: 20, exp: 234, required: 589 }, 400, () => null);
     assert.equal(r.level, 21);
-    assert.equal(r.exp, 634);
+    assert.equal(r.exp, 45);
     assert.equal(r.required, null);
+  });
+
+  test("real game check: LVL 26 at 6,232/19,970 → LVL 27 at 20,262 is 34,000 XP", () => {
+    const r = inferExpGained({ level: 26, exp: 6232, required: 19970 }, { level: 27, exp: 20262, required: 20978 }, noReq);
+    assert.equal(r.exp, 34000);
+    assert.deepEqual(addXp({ level: 26, exp: 6232, required: 19970 }, 34000, (l) => (l === 27 ? 20978 : null)), { level: 27, exp: 20262, required: 20978, levelsGained: 1 });
   });
 
   test("staying under the limit just adds XP", () => {

@@ -1,5 +1,5 @@
-// Character XP maths. In Hack EX2 the XP number is a running total: it keeps counting through
-// level-ups and only the target after the "/" moves up (150/200 + 100 → LVL 2 at 250/400).
+// Character XP maths. XP carries over when a character levels up, and every level
+// can need a different amount, so we always walk level by level with real thresholds.
 
 import type { CharacterState } from "./types";
 
@@ -35,9 +35,8 @@ export function validateCharacter(s: CharacterState): string | null {
 
 /**
  * Works out how much XP was earned between two character snapshots.
- * Hack EX2 XP is a running total: it does NOT reset on level-up, only the target after the "/" moves up
- * (LVL 1 at 150/200 + 100 XP → LVL 2 at 250/400). So the gain is simply after − before.
- * `reqFor` is only used to sanity-check a level-up (the old target must have been reached).
+ * The requirement for the starting level comes from `before.required` first, then `reqFor`.
+ * Intermediate levels come from `reqFor`. Unknown thresholds make the result "incomplete".
  */
 export function inferExpGained(before: CharacterState, after: CharacterState, reqFor: ReqFn): ExpInference {
   const invalid = (error: string): ExpInference =>
@@ -49,23 +48,43 @@ export function inferExpGained(before: CharacterState, after: CharacterState, re
   if (e2) return invalid(`After: ${e2}`);
   if (after.level < before.level) return invalid("Character level went down. Check the numbers (or a reboot happened).");
 
-  const diff = after.exp - before.exp;
-  if (diff < 0) return invalid("XP went down. XP keeps counting up through level-ups, so check the numbers.");
-
-  if (after.level > before.level) {
-    const target = before.required ?? reqFor(before.level);
-    if (target !== null && after.exp < target) {
-      return invalid(`You levelled up, so XP should be at least ${target} (the old target). Check the numbers.`);
-    }
+  if (after.level === before.level) {
+    const diff = after.exp - before.exp;
+    if (diff < 0) return invalid("XP went down without a level change. Check the numbers.");
     return {
       status: "exact", exp: diff, atLeast: diff, missingLevels: [],
-      breakdown: [{ level: after.level, amount: diff, note: `${before.exp} → ${after.exp} (LVL ${before.level} → ${after.level})` }]
+      breakdown: [{ level: before.level, amount: diff, note: `${before.exp} → ${after.exp} within level ${before.level}` }]
     };
   }
-  return {
-    status: "exact", exp: diff, atLeast: diff, missingLevels: [],
-    breakdown: [{ level: before.level, amount: diff, note: `${before.exp} → ${after.exp} within level ${before.level}` }]
-  };
+
+  const breakdown: ExpBreakdownLine[] = [];
+  const missing: number[] = [];
+  let known = 0;
+
+  const startReq = before.required ?? reqFor(before.level);
+  if (startReq === null) missing.push(before.level);
+  else {
+    const rest = startReq - before.exp;
+    if (rest <= 0) return invalid(`Before XP ${before.exp} is not below the level ${before.level} requirement ${startReq}.`);
+    known += rest;
+    breakdown.push({ level: before.level, amount: rest, note: `finishes level ${before.level} (${before.exp}/${startReq})` });
+  }
+
+  for (let l = before.level + 1; l < after.level; l++) {
+    const r = reqFor(l);
+    if (r === null) { missing.push(l); continue; }
+    known += r;
+    breakdown.push({ level: l, amount: r, note: `all of level ${l}` });
+  }
+
+  known += after.exp;
+  breakdown.push({ level: after.level, amount: after.exp, note: `carried into level ${after.level}` });
+
+  if (missing.length) {
+    // Each unknown level needs at least 1 XP; the starting level at least 1 more than nothing.
+    return { status: "incomplete", exp: null, atLeast: known + missing.length, missingLevels: missing, breakdown };
+  }
+  return { status: "exact", exp: known, atLeast: known, missingLevels: [], breakdown };
 }
 
 export interface ExpProjection {
@@ -78,11 +97,12 @@ export interface ExpProjection {
 /** Predicts the character state after gaining `gain` XP (used to preview a purchase). */
 export function applyExp(start: CharacterState, gain: number, reqFor: ReqFn): ExpProjection {
   let level = start.level;
-  const exp = start.exp + gain;
+  let exp = start.exp + gain;
   let req = start.required ?? reqFor(level);
   for (let guard = 0; guard < 10000; guard++) {
     if (req === null) return { status: "incomplete", state: null, missingLevels: [level], levelsGained: level - start.level };
     if (exp < req) break;
+    exp -= req;
     level += 1;
     req = reqFor(level);
   }
@@ -92,24 +112,24 @@ export function applyExp(start: CharacterState, gain: number, reqFor: ReqFn): Ex
 export interface GainResult {
   level: number;
   exp: number;
-  /** XP target at the new level, or null if nobody has recorded it yet (ask the player). */
+  /** XP needed at the new level, or null if nobody has recorded it yet (ask the player). */
   required: number | null;
   levelsGained: number;
 }
 
 /**
- * Adds XP to a character the way the game does: XP is a running total. When it reaches the
- * target the character levels up and the target moves up; XP is NOT reduced
- * (LVL 1 at 150/200 + 100 → LVL 2 at 250/400).
- * If the next level's target is unknown we stop there and return required = null;
+ * Adds XP to a character the way the game does: when XP reaches the level's limit the
+ * character levels up and the leftover carries over (20 at 234/589 + 400 → 21 at 45).
+ * If the next level's requirement is unknown we stop there and return required = null;
  * once the player types it in, call again with gain 0 to finish any further level-ups.
  */
 export function addXp(start: CharacterState, gain: number, reqFor: ReqFn): GainResult {
   if (start.required === null) throw new Error("Current XP needed is required");
   let level = start.level;
-  const exp = start.exp + gain;
+  let exp = start.exp + gain;
   let req: number | null = start.required;
   while (req !== null && exp >= req) {
+    exp -= req;
     level += 1;
     req = reqFor(level);
   }

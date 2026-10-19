@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { newId } from "../data/repository";
 import { CATALOG, CATEGORY_LABEL, getEntry, methodsFor } from "../domain/catalog";
-import { addXp } from "../domain/exp";
+import { addXp, inferExpGained } from "../domain/exp";
 import { isVerified, methodLabel } from "../domain/knowledge";
 import { missingKey, planPurchase } from "../domain/purchase";
 import { buildRecord, RecordResult } from "../domain/record";
@@ -209,8 +209,11 @@ export default function Purchase() {
           <div className="hint">Before: <span className="mono">{stateText(b.state)}</span></div>
           <CharacterForm draft={after} onChange={setAfter} autoFocus />
           {a.state && !a.error && a.state.level >= b.state.level && (() => {
-            const gained = a.state.exp - b.state.exp; // XP is a running total, even across level-ups
-            return gained !== null && gained >= 0 ? <Notice tone="good"><b>+{fmt(gained)} XP</b> from this purchase</Notice> : null;
+            // XP carries over: finish the old level, then count what spilled into the new one.
+            const inf = inferExpGained(b.state, a.state, reqFor);
+            if (inf.status === "exact") return <Notice tone="good"><b>+{fmt(inf.exp)} XP</b> from this purchase</Notice>;
+            if (inf.status === "incomplete") return <Notice tone="info">At least <b>+{fmt(inf.atLeast)} XP</b>. The XP needed for LVL {inf.missingLevels.join(", ")} isn't known yet.</Notice>;
+            return <Notice tone="bad">{inf.error}</Notice>;
           })()}
           {a.error && after.exp !== "" && <Notice tone="bad">{a.error}</Notice>}
           {err && <Notice tone="bad">{err}</Notice>}
