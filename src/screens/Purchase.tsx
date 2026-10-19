@@ -209,7 +209,7 @@ export default function Purchase() {
           <div className="hint">Before: <span className="mono">{stateText(b.state)}</span></div>
           <CharacterForm draft={after} onChange={setAfter} autoFocus />
           {a.state && !a.error && a.state.level >= b.state.level && (() => {
-            const gained = a.state.level === b.state.level ? a.state.exp - b.state.exp : null;
+            const gained = a.state.exp - b.state.exp; // XP is a running total, even across level-ups
             return gained !== null && gained >= 0 ? <Notice tone="good"><b>+{fmt(gained)} XP</b> from this purchase</Notice> : null;
           })()}
           {a.error && after.exp !== "" && <Notice tone="bad">{a.error}</Notice>}

@@ -4,24 +4,33 @@ import { Lookup, Reliability, RELIABILITY_LABEL } from "../domain/knowledge";
 import type { Category } from "../domain/types";
 import { useApp } from "../state";
 import { Card, fmt } from "../ui/components";
+import { ReportsSheet, ReportTarget } from "../ui/ReportsSheet";
 
 const GROUPS: Category[] = ["core", "defensive", "offensive", "virus", "utility", "one_time"];
 const CLS: Record<Reliability, string> = {
   unknown: "c-unknown", observed_once: "c-once", repeated: "c-repeated", confirmed: "c-confirmed", conflict: "c-conflict"
 };
 
-function Cell({ l }: { l: Lookup | null }) {
+function Cell({ l, onOpen }: { l: Lookup | null; onOpen: () => void }) {
   if (!l) return <td className="c-na" title="Not applicable">n/a</td>;
-  if (l.reliability === "unknown") return <td className="c-unknown" title="Missing">—</td>;
-  if (l.reliability === "conflict") return <td className="c-conflict" title={`Conflict: ${l.values.join(" / ")}`}>{l.values.map(fmt).join("/")}</td>;
-  return <td className={CLS[l.reliability]} title={`${RELIABILITY_LABEL[l.reliability]} (${l.count})`}>{fmt(l.value)}</td>;
+  const [cls, title, text] =
+    l.reliability === "unknown" ? ["c-unknown", "Missing", "—"]
+    : l.reliability === "conflict" ? ["c-conflict", `Conflict: ${l.values.join(" / ")}`, l.values.map(fmt).join("/")]
+    : [CLS[l.reliability], `${RELIABILITY_LABEL[l.reliability]} (${l.count})`, fmt(l.value)];
+  return <td className={`${cls} tap`} title={title}><button className="cell-btn" onClick={onOpen}>{text}</button></td>;
 }
 
+const COLS: { type: "price" | "exp"; method: "store" | "download"; label: string }[] = [
+  { type: "price", method: "store", label: "store price" }, { type: "exp", method: "store", label: "store XP" },
+  { type: "price", method: "download", label: "Keygen price" }, { type: "exp", method: "download", label: "Keygen XP" }
+];
+
 export default function DataTable() {
-  const { kb, player } = useApp();
+  const { kb, player, isAdmin } = useApp();
   const [subject, setSubject] = useState("firewall");
   const [extra, setExtra] = useState(0);
   const [onlyMissing, setOnlyMissing] = useState(false);
+  const [open, setOpen] = useState<ReportTarget | null>(null);
   const isChar = subject === "character";
   const entry = isChar ? null : getEntry(subject);
 
@@ -94,7 +103,11 @@ export default function DataTable() {
               {shown.map((r) => (
                 <tr key={r.level} className={myLevel !== undefined && (isChar ? r.level === myLevel : r.level === myLevel + 1) ? "mine" : ""}>
                   <th className="mono">{entry?.kind === "one_time" ? "—" : r.level}</th>
-                  {r.cells.map((c, i) => <Cell key={i} l={c} />)}
+                  {r.cells.map((c, i) => (
+                    <Cell key={i} l={c} onOpen={() => setOpen(isChar
+                      ? { title: `Character LVL ${r.level} · XP needed`, type: "level_req", level: r.level }
+                      : { title: `${entry!.name}${entry!.kind === "one_time" ? "" : ` Lv ${r.level}`} · ${COLS[i].label}`, type: COLS[i].type, method: COLS[i].method, upgradeId: entry!.id, level: r.level })} />
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -110,9 +123,11 @@ export default function DataTable() {
           <span><i className="seg-conflict" /> Conflict</span>
           <span>— Missing</span>
         </div>
+        <p className="hint">Tap any value to see who reported it{isAdmin ? ", and to move a report to the right level, correct it or reject it" : " and to remove your own mistakes"}.</p>
         {myLevel !== undefined && <p className="hint">The highlighted row is {isChar ? "your current level" : "your next level"}.</p>}
         {entry && !entry.download && entry.kind !== "one_time" && <p className="hint">{entry.name} can't be bought with Keygen, so those columns are n/a.</p>}
       </Card>
+      {open && <ReportsSheet target={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }

@@ -451,3 +451,97 @@ grant update (resolved) on public.observation_flags to authenticated;
 grant select on public.player_profiles to authenticated;
 grant select, insert, update, delete on public.player_progress,
   public.player_upgrade_state, public.purchase_history to authenticated;
+
+-- ---------------------------------------------------------------------
+-- Fixing wrong reports (also shipped alone as 0004_fix_reports.sql).
+-- ---------------------------------------------------------------------
+
+create or replace function public.admin_edit_observation(
+  p_type text, p_id uuid, p_to_level int, p_value bigint, p_move_purchase boolean default false
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  r record; delta int; was text;
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if p_value is null or p_value < 0 then raise exception 'Enter a value of 0 or more'; end if;
+  if p_to_level is null or p_to_level < 1 then raise exception 'Level must be 1 or more'; end if;
+
+  if p_type = 'level_req' then
+    select * into r from public.level_requirement_observations where id = p_id;
+    if not found then raise exception 'Report not found'; end if;
+    if p_value = 0 then raise exception 'XP needed must be more than 0'; end if;
+    was := format('LVL %s, %s XP', r.level, r.exp_required);
+    update public.level_requirement_observations
+      set level = p_to_level, exp_required = p_value,
+          notes = left(trim(both ' ' from notes || format(' [Admin fixed %s: was %s]', to_char(now(), 'YYYY-MM-DD'), was)), 500)
+      where id = p_id;
+    return;
+  end if;
+
+  if p_type = 'price' then
+    select * into r from public.price_observations where id = p_id;
+  elsif p_type = 'exp' then
+    select * into r from public.exp_observations where id = p_id;
+  else
+    raise exception 'Unknown report type';
+  end if;
+  if not found then raise exception 'Report not found'; end if;
+
+  delta := p_to_level - r.to_level;
+  if r.from_level + delta < 0 then raise exception 'That level is too low for this report'; end if;
+
+  if p_type = 'price' then
+    was := format('Lv %s→%s, cost %s', r.from_level, r.to_level, r.cost);
+    update public.price_observations
+      set from_level = from_level + delta, to_level = to_level + delta, cost = p_value,
+          notes = left(trim(both ' ' from notes || format(' [Admin fixed %s: was %s]', to_char(now(), 'YYYY-MM-DD'), was)), 500)
+      where id = p_id;
+  else
+    was := format('Lv %s→%s, %s XP', r.from_level, r.to_level, r.exp);
+    update public.exp_observations
+      set from_level = from_level + delta, to_level = to_level + delta, exp = p_value,
+          notes = left(trim(both ' ' from notes || format(' [Admin fixed %s: was %s]', to_char(now(), 'YYYY-MM-DD'), was)), 500)
+      where id = p_id;
+  end if;
+
+  -- Move the purchase's other reports (same purchase, same software) by the same number of levels.
+  if p_move_purchase and r.purchase_id is not null and delta <> 0 then
+    update public.price_observations
+      set from_level = from_level + delta, to_level = to_level + delta,
+          notes = left(trim(both ' ' from notes || format(' [Admin moved %s: was Lv %s→%s]', to_char(now(), 'YYYY-MM-DD'), from_level, to_level)), 500)
+      where purchase_id = r.purchase_id and upgrade_id = r.upgrade_id and id <> p_id and from_level + delta >= 0;
+    update public.exp_observations
+      set from_level = from_level + delta, to_level = to_level + delta,
+          notes = left(trim(both ' ' from notes || format(' [Admin moved %s: was Lv %s→%s]', to_char(now(), 'YYYY-MM-DD'), from_level, to_level)), 500)
+      where purchase_id = r.purchase_id and upgrade_id = r.upgrade_id and id <> p_id and from_level + delta >= 0;
+  end if;
+end $$;
+
+-- A player takes back their own report (wrong button). It stays on record as rejected.
+create or replace function public.withdraw_observation(p_type text, p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  if auth.uid() is null or not public.is_approved() then raise exception 'Sign in first'; end if;
+  if p_type = 'price' then
+    update public.price_observations set status = 'rejected',
+      notes = left(trim(both ' ' from notes || ' [Withdrawn by reporter]'), 500)
+      where id = p_id and contributor_id = auth.uid() and status = 'observed';
+  elsif p_type = 'exp' then
+    update public.exp_observations set status = 'rejected',
+      notes = left(trim(both ' ' from notes || ' [Withdrawn by reporter]'), 500)
+      where id = p_id and contributor_id = auth.uid() and status = 'observed';
+  elsif p_type = 'level_req' then
+    update public.level_requirement_observations set status = 'rejected',
+      notes = left(trim(both ' ' from notes || ' [Withdrawn by reporter]'), 500)
+      where id = p_id and contributor_id = auth.uid() and status = 'observed';
+  else
+    raise exception 'Unknown report type';
+  end if;
+  get diagnostics n = row_count;
+  if n = 0 then raise exception 'You can only remove your own reports that the admin hasn''t confirmed yet'; end if;
+end $$;
+
+revoke all on function public.admin_edit_observation(text, uuid, int, bigint, boolean), public.withdraw_observation(text, uuid) from public;
+grant execute on function public.admin_edit_observation(text, uuid, int, bigint, boolean), public.withdraw_observation(text, uuid) to authenticated;

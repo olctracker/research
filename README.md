@@ -9,7 +9,7 @@ A phone-friendly web app for recording Hack EX2 upgrade purchases, working out t
 **Menu (left side):**
 - **My Device:** your LVL, XP and every software level. Edit it anytime, for example if a purchase wasn't tracked.
 - **Store Prices** / **Keygen Prices:** the price of each program's **next** level, which is all the game shows. The menu count is how many you can see in game that nobody has entered yet.
-- **Purchase:** pick the software, choose Store or Keygen, check the price, and confirm your LVL and XP. Your device then updates. If the XP reward is known, it's added automatically, levelling you up with the leftover carried over. If not, you enter your stats after buying and the app works it out.
+- **Purchase:** pick the software, choose Store or Keygen, check the price, and confirm your LVL and XP. Your device then updates. If the XP reward is known, it's added automatically, levelling you up when you pass the target (XP keeps counting; only the target moves up). If not, you enter your stats after buying and the app works it out.
 - **History**
 - **Data Table:** pick a program (or Character levels) to see every level's store and Keygen price and XP, so you know exactly what's missing.
 - **Coverage & Conflicts**
@@ -40,7 +40,7 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
 
 1. Go to [supabase.com](https://supabase.com) and create a **new project**. Pick any name and save the database password somewhere safe.
 2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.
-   - Already ran an older `setup.sql` from before account approval? Run only `supabase/migrations/0003_admin_tools_upgrade.sql` instead. It's short and safe to repeat.
+   - Already ran an older `setup.sql`? Run only the upgrade files you haven't run yet, in order: `0003_admin_tools_upgrade.sql` (account approval), `0004_fix_reports.sql` (fixing wrong reports). Each is short and safe to repeat.
 3. (Nothing else to run — the starting data is included.)
 4. Set up PIN accounts. Go to **Authentication → Sign In / Providers → Email** and set:
    - **Enable Email provider**: on
@@ -111,6 +111,7 @@ npm run build                # type-checks and builds into dist/
   - Anyone can read shared observations. Signed-in players can add new ones, but only with status `observed` and only under their own ID.
   - Nobody can edit or delete raw observations through the app. Only admins can change an observation's status. Flags are added alongside a record; they never change it.
 - The database itself checks input too: methods allowed per upgrade, level caps, one-time items, number ranges, and note length.
+- Mistakes: tap any value in the **Data Table** to see its reports. Players can remove their own report; the admin can move a report to the right level, correct it, or reject it (old numbers are kept in its notes).
 - `tests/sql/10_rls_test.sql` proves these rules, and it runs in GitHub Actions whenever the SQL changes.
 - No game passwords or personal details are stored. The alias is optional.
 
@@ -123,7 +124,7 @@ npm run build                # type-checks and builds into dist/
 - **Download data model:** one transaction. Cost is the observed combined total. If only per-level download *components* are known, their sum is shown, clearly labelled as an estimate. EXP counts the destination level only.
 - **Keygen:** a download to level N needs Keygen N or higher (working rule, still being verified).
 - **Defensive discount (15%):** applies to Firewall, Password Encryptor, Antivirus, Proxy and Trace store purchases. Prices are stored as the final amount charged, and the rounding rule is still being researched.
-- **Character EXP:** worked out level by level using each level's own requirement, with carry-over. If any requirement in between is unknown, the result is shown as "at least X", never as a made-up exact number.
+- **Character EXP:** XP is a running total that doesn't reset on level-up; only the target after the "/" moves up (LVL 1 at 150/200 + 100 → LVL 2 at 250/400). So XP earned is simply after − before. *(Observed, still being confirmed.)*
 - **Reliability** of each value: Unknown → Observed once → Repeated observation → Confirmed (admin only). Disagreeing observations are all kept and shown as a **conflict**. They are never averaged.
 
 ---

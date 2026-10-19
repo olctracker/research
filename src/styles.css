@@ -373,3 +373,26 @@ select.input { appearance: auto; }
 .player-row { align-items: flex-start; flex-wrap: wrap; }
 .player-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .inline-badge { display: inline-grid; margin-left: 8px; vertical-align: middle; }
+
+/* ---------- reports sheet (tap a Data Table value) ---------- */
+.data-table td.tap { padding: 0; }
+.cell-btn { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 6px; text-align: right; cursor: pointer; border-radius: 6px; }
+.cell-btn:hover, .cell-btn:focus-visible { background: var(--surface-2); outline: none; }
+.cell-btn:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.sheet-scrim { display: block !important; z-index: 40; }
+.sheet {
+  position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto;
+  background: var(--surface); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px;
+}
+@media (min-width: 720px) { .sheet { left: 50%; right: auto; width: 560px; transform: translateX(-50%); bottom: 24px; border-radius: 18px; border: 1px solid var(--line); } }
+.sheet-head { display: flex; align-items: center; gap: 10px; }
+.sheet-title { font-weight: 700; font-size: 1.05rem; }
+.report { list-style: none; padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.report:last-child { border-bottom: 0; }
+.report.rejected .report-value { text-decoration: line-through; color: var(--muted); }
+.report-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.report-value { font-size: 1.2rem; font-weight: 700; }
+.report-notes { font-style: italic; overflow-wrap: anywhere; }
+.report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.edit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--surface-2); }

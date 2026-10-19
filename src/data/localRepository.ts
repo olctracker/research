@@ -147,6 +147,48 @@ export class LocalRepository implements Repository {
       levelReqs: type === "level_req" ? upd(o.levelReqs) : o.levelReqs
     });
   }
+  async withdrawObservation(type: ObservationType, id: string) {
+    const me = this.me();
+    const o = await this.loadObservations();
+    const rows: { id: string; contributor: string; status: ObservationStatus; notes: string }[] =
+      type === "price" ? o.prices : type === "exp" ? o.exp : o.levelReqs;
+    const r = rows.find((x) => x.id === id);
+    if (!r || r.contributor !== me.username || r.status !== "observed") throw new Error("You can only remove your own reports that the admin hasn't confirmed yet");
+    r.status = "rejected";
+    r.notes = `${r.notes} [Withdrawn by reporter]`.trim();
+    write(K.obs, o);
+  }
+  async editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean) {
+    this.requireAdmin();
+    if (!(value >= 0)) throw new Error("Enter a value of 0 or more");
+    if (!(toLevel >= 1)) throw new Error("Level must be 1 or more");
+    const o = await this.loadObservations();
+    const day = new Date().toISOString().slice(0, 10);
+    if (type === "level_req") {
+      const r = o.levelReqs.find((x) => x.id === id);
+      if (!r) throw new Error("Report not found");
+      if (value === 0) throw new Error("XP needed must be more than 0");
+      r.notes = `${r.notes} [Admin fixed ${day}: was LVL ${r.level}, ${r.expRequired} XP]`.trim();
+      r.level = toLevel; r.expRequired = value;
+      write(K.obs, o);
+      return;
+    }
+    const r = type === "price" ? o.prices.find((x) => x.id === id) : o.exp.find((x) => x.id === id);
+    if (!r) throw new Error("Report not found");
+    const delta = toLevel - r.toLevel;
+    if (r.fromLevel + delta < 0) throw new Error("That level is too low for this report");
+    if ("cost" in r) { r.notes = `${r.notes} [Admin fixed ${day}: was Lv ${r.fromLevel}→${r.toLevel}, cost ${r.cost}]`.trim(); r.cost = value; }
+    else { r.notes = `${r.notes} [Admin fixed ${day}: was Lv ${r.fromLevel}→${r.toLevel}, ${r.exp} XP]`.trim(); r.exp = value; }
+    r.fromLevel += delta; r.toLevel += delta;
+    if (movePurchase && r.purchaseId && delta !== 0) {
+      for (const x of [...o.prices, ...o.exp]) {
+        if (x.id === id || x.purchaseId !== r.purchaseId || x.upgradeId !== r.upgradeId || x.fromLevel + delta < 0) continue;
+        x.notes = `${x.notes} [Admin moved ${day}: was Lv ${x.fromLevel}→${x.toLevel}]`.trim();
+        x.fromLevel += delta; x.toLevel += delta;
+      }
+    }
+    write(K.obs, o);
+  }
   async resolveFlag(id: string) {
     this.requireAdmin();
     write(K.flags, read<Flag[]>(K.flags, []).map((f) => (f.id === id ? { ...f, resolved: true } : f)));

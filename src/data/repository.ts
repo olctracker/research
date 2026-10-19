@@ -58,11 +58,18 @@ export interface Repository {
   contribute(c: Contribution): Promise<void>;
   flagObservation(type: ObservationType, id: string, reason: string): Promise<void>;
   listFlags(): Promise<Flag[]>;
+  /** Takes back your own report (wrong button). It stays on record, marked rejected. */
+  withdrawObservation(type: ObservationType, id: string): Promise<void>;
 
   // ---- admin only (the database refuses these for everyone else) ----
   setObservationStatus(type: ObservationType, id: string, status: ObservationStatus): Promise<void>;
   resolveConflict(type: ObservationType, keepIds: string[], rejectIds: string[]): Promise<void>;
   resolveFlag(id: string): Promise<void>;
+  /**
+   * Moves a report to the right destination level and/or corrects its value. The old values are kept in its notes.
+   * movePurchase: the purchase's other reports for the same software move by the same number of levels.
+   */
+  editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean): Promise<void>;
   listPlayers(): Promise<PlayerSummary[]>;
   resetPin(userId: string, pin: string): Promise<void>;
   setApproved(userId: string, approved: boolean): Promise<void>;

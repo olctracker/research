@@ -234,6 +234,14 @@ export class SupabaseRepository implements Repository {
     check(await this.sb.rpc("admin_resolve", { p_table: TABLE[type], p_keep: keepIds, p_reject: rejectIds }));
   }
 
+  async withdrawObservation(type: ObservationType, id: string) {
+    check(await this.sb.rpc("withdraw_observation", { p_type: type, p_id: id }));
+  }
+
+  async editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean) {
+    check(await this.sb.rpc("admin_edit_observation", { p_type: type, p_id: id, p_to_level: toLevel, p_value: value, p_move_purchase: movePurchase }));
+  }
+
   async resolveFlag(id: string) {
     const res = await this.sb.from("observation_flags").update({ resolved: true }).eq("id", id).select("id");
     if (!check(res)?.length) throw new Error("Not allowed (admins only).");

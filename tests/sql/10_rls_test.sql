@@ -175,4 +175,36 @@ do $$ begin
   if exists (select 1 from public.player_profiles where user_id = '33333333-3333-3333-3333-333333333333') then raise exception 'FAILED: deleted profile remains'; end if;
 end $$;
 
+-- ---------- fixing wrong reports ----------
+-- robert (bob) reports a Network purchase at the wrong level: price + XP for 10→11 that really were 9→10
+set role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, purchase_id)
+  values ('network','store',10,11,654321,'per_level','aaaaaaaa-0000-0000-0000-000000000001');
+insert into public.exp_observations (upgrade_id, method, from_level, to_level, exp, exp_basis, source, purchase_id)
+  values ('network','store',10,11,4321,'per_level','inferred','aaaaaaaa-0000-0000-0000-000000000001');
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type)
+  values ('spam','store',8,9,555111,'per_level');
+-- players can't edit, only withdraw their own
+select pg_temp.expect_error($$select public.admin_edit_observation('price', (select id from public.price_observations where cost = 654321), 10, 1, true)$$, 'player uses admin edit');
+select public.withdraw_observation('price', (select id from public.price_observations where cost = 555111));
+select pg_temp.expect_error($$select public.withdraw_observation('price', (select id from public.price_observations where cost = 555111))$$, 'withdraw twice');
+select pg_temp.expect_error($$select public.withdraw_observation('price', (select id from public.price_observations where cost = 123456))$$, 'withdraw someone else''s report');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+-- admin moves the price to level 10 and the XP from the same purchase follows
+select public.admin_edit_observation('price', (select id from public.price_observations where cost = 654321), 10, 654321, true);
+-- admin corrects a value only
+select public.admin_edit_observation('exp', (select id from public.exp_observations where exp = 4321), 10, 4320, false);
+select pg_temp.expect_error($$select public.admin_edit_observation('price', (select id from public.price_observations where cost = 654321), 0, 5, false)$$, 'move below level 1');
+select pg_temp.expect_error($$select public.admin_edit_observation('price', (select id from public.price_observations where cost = 654321), 10, -5, false)$$, 'negative price');
+reset role;
+do $$ begin
+  if (select status from public.price_observations where cost = 555111) <> 'rejected' then raise exception 'FAILED: withdraw'; end if;
+  if (select from_level || '>' || to_level from public.price_observations where cost = 654321) <> '9>10' then raise exception 'FAILED: price not moved'; end if;
+  if (select from_level || '>' || to_level from public.exp_observations where exp = 4320) <> '9>10' then raise exception 'FAILED: XP did not move with its purchase'; end if;
+  if (select notes from public.price_observations where cost = 654321) not like '%was Lv 10→11%' then raise exception 'FAILED: old values not kept in notes'; end if;
+end $$;
+
 select 'ALL RLS TESTS PASSED' as result;
