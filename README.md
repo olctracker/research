@@ -39,7 +39,7 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
 ### 1. Supabase (the shared database)
 
 1. Go to [supabase.com](https://supabase.com) and create a **new project**. Pick any name and save the database password somewhere safe.
-2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. (It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.)
+2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. (Upgrading a database set up before account approval existed? Run `supabase/migrations/0003_admin_tools_upgrade.sql` instead — it's short and safe to repeat.) (It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.)
 3. (Nothing else to run — the starting data is included.)
 4. Set up PIN accounts. Go to **Authentication → Sign In / Providers → Email** and set:
    - **Enable Email provider**: on
