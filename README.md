@@ -39,7 +39,8 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
 ### 1. Supabase (the shared database)
 
 1. Go to [supabase.com](https://supabase.com) and create a **new project**. Pick any name and save the database password somewhere safe.
-2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. (Upgrading a database set up before account approval existed? Run `supabase/migrations/0003_admin_tools_upgrade.sql` instead — it's short and safe to repeat.) (It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.)
+2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.
+   - Already ran an older `setup.sql` from before account approval? Run only `supabase/migrations/0003_admin_tools_upgrade.sql` instead. It's short and safe to repeat.
 3. (Nothing else to run — the starting data is included.)
 4. Set up PIN accounts. Go to **Authentication → Sign In / Providers → Email** and set:
    - **Enable Email provider**: on
@@ -132,7 +133,6 @@ npm run build                # type-checks and builds into dist/
 - **Unverified:** the Keygen download rule, the discount rounding, whether download totals equal the sum of their components, and caps on uncapped software.
 - **Spec Example B is not in the database:** the download cost components 100/200/300/400 with 5 EXP weren't saved because the software they came from wasn't recorded. Record it again with the software name.
 - **EXP inference assumes nothing else gave EXP** between "before" and "after". Enter your new stats right after buying. Use **Home → Update** for EXP from hacks and other sources.
-- Usernames can't be changed after sign-up. Deleting an account is done by the admin in Supabase (**Authentication → Users**).
 - **Coverage measures a defined range:** capped upgrades up to their maximum; uncapped software up to level 20, or the highest level anyone has recorded; character levels 1–30. 100% coverage there does not mean everything is known.
 - **Deleting a history entry** doesn't roll back your levels. Use **Edit game state** for that.
 - **Moderation is basic:** admins mark records confirmed or rejected and resolve flags. There's no voting or bulk review yet.
