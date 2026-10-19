@@ -1,7 +1,6 @@
 # Builds the app, runs the tests, and publishes it to GitHub Pages on every push to main.
 # One-time setup: repo Settings → Pages → Source: "GitHub Actions".
-# Supabase settings come from repo Settings → Secrets and variables → Actions → Variables:
-#   VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY  (publishable key only, never the secret key)
+# Supabase settings (public URL + publishable key) live in .env.production.
 name: Deploy to GitHub Pages
 
 on:
@@ -28,10 +27,8 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm test
+      # Supabase settings come from .env.production (public URL + publishable key).
       - run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

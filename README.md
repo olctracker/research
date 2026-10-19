@@ -39,8 +39,8 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
 ### 1. Supabase (the shared database)
 
 1. Go to [supabase.com](https://supabase.com) and create a **new project**. Pick any name and save the database password somewhere safe.
-2. Open **SQL Editor → New query**. Paste all of `supabase/migrations/0001_schema.sql` and click **Run**.
-3. Do the same with `supabase/migrations/0002_seed.sql`. This adds the 16 upgrades and the Spam example data.
+2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. (It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.)
+3. (Nothing else to run — the starting data is included.)
 4. Set up PIN accounts. Go to **Authentication → Sign In / Providers → Email** and set:
    - **Enable Email provider**: on
    - **Confirm email**: **off**. This is required, because players sign up with a username and PIN, not a real email address.
@@ -56,11 +56,7 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
 ### 2. GitHub Pages (the website)
 
 1. In the GitHub repository go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
-2. Go to **Settings → Secrets and variables → Actions → Variables tab → New repository variable** and add:
-   - `VITE_SUPABASE_URL` = your Project URL
-   - `VITE_SUPABASE_PUBLISHABLE_KEY` = your publishable key
-
-   These go under *Variables*, not *Secrets*, because both values are public by design. Row Level Security protects the data.
+2. Put the Supabase **Project URL** and **publishable key** in `.env.production` (already done for HEDB). Both are public by design; Row Level Security protects the data.
 3. Open the **Actions** tab, pick **Deploy to GitHub Pages**, and click **Run workflow**. Every later push to `main` redeploys automatically.
 4. The site appears at `https://<your-github-name>.github.io/<repository-name>/`.
 
