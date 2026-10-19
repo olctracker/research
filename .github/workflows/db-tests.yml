@@ -33,3 +33,6 @@ jobs:
           done
           psql -v ON_ERROR_STOP=1 -f tests/sql/10_rls_test.sql | tee out.txt
           grep -q "ALL RLS TESTS PASSED" out.txt
+      - name: One-step setup.sql must match the two migration files
+        run: |
+          { echo "-- ====================================================================="; echo "-- HEDB one-step Supabase setup: schema + security + starting data."; echo "-- Paste ALL of this into Supabase → SQL Editor → New query → Run."; echo "-- Generated from supabase/migrations/0001_schema.sql + 0002_seed.sql. Safe to run again."; echo "-- ====================================================================="; echo; cat supabase/migrations/0001_schema.sql; echo; cat supabase/migrations/0002_seed.sql; } | diff - supabase/setup.sql
