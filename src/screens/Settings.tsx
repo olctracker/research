@@ -171,8 +171,8 @@ export default function Settings() {
         <div className="btn-col">
           <button className="btn" onClick={exportJson}>Everything (JSON)</button>
           <button className="btn" onClick={() => csv("prices", toCsv(observations.prices))} disabled={!observations.prices.length}>Price observations (CSV)</button>
-          <button className="btn" onClick={() => csv("exp", toCsv(observations.exp))} disabled={!observations.exp.length}>XP observations (CSV)</button>
-          <button className="btn" onClick={() => csv("level-requirements", toCsv(observations.levelReqs))} disabled={!observations.levelReqs.length}>Character level requirements (CSV)</button>
+          <button className="btn" onClick={() => csv("upgrade-xp", toCsv(observations.exp))} disabled={!observations.exp.length}>Upgrade XP rewards (CSV)</button>
+          <button className="btn" onClick={() => csv("character-levels", toCsv(observations.levelReqs))} disabled={!observations.levelReqs.length}>Character level XP targets (CSV)</button>
           <button className="btn" onClick={() => csv("purchases", toCsv(flattenPurchases(purchases)))} disabled={!purchases.length}>My purchase history (CSV)</button>
         </div>
       </Card>
