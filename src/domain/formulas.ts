@@ -6,7 +6,7 @@
 //   24–27, 29, 30 (R3). Status: verified.
 //
 // Upgrade XP (store), per level L:
-//   Firewall = floor(136 × L^1.25) — matches L24–26 exactly. Status: likely
+//   Firewall = floor(136 × L^1.25) — matches L24–26 and predicted L27 (8,370) before it was bought. Status: verified
 //   (136 = base price 800 × 0.2 × 0.85 defensive discount; other programs not confirmed yet).
 
 export type FormulaStatus = "verified" | "likely";
@@ -22,7 +22,7 @@ export function charTarget(level: number): number | null {
 interface XpFormula { status: FormulaStatus; text: string; fn: (toLevel: number) => number }
 
 export const XP_FORMULAS: Record<string, XpFormula> = {
-  firewall: { status: "likely", text: "floor(136 × L^1.25)", fn: (l) => Math.floor(136 * Math.pow(l, 1.25)) }
+  firewall: { status: "verified", text: "floor(136 × L^1.25)", fn: (l) => Math.floor(136 * Math.pow(l, 1.25)) }
 };
 
 /** Predicted store XP for reaching `toLevel`, or null when there's no formula yet. */

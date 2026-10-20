@@ -209,7 +209,7 @@ export default function Purchase() {
           <div className="hint">Before: <span className="mono">{stateText(b.state)}</span></div>
           {(() => {
             const pr = method === "store" ? app.kb.storeLevelExp(entry.id, next).predicted ?? null : null;
-            return pr !== null ? <div className="hint">The likely formula expects <b className="mono">+{fmt(pr)} XP</b>. Enter what the game shows so we can check it.</div> : null;
+            return pr !== null ? <div className="hint">The formula expects <b className="mono">+{fmt(pr)} XP</b>. Enter what the game shows to check it.</div> : null;
           })()}
           <CharacterForm draft={after} onChange={setAfter} autoFocus />
           {a.state && !a.error && a.state.level >= b.state.level && (() => {
