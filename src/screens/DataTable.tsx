@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CATALOG, CATEGORY_LABEL, getEntry } from "../domain/catalog";
+import { CATALOG, CATEGORY_LABEL, getEntry, levelName } from "../domain/catalog";
 import { Lookup, Reliability, RELIABILITY_LABEL } from "../domain/knowledge";
 import type { Category } from "../domain/types";
 import { useApp } from "../state";
@@ -112,11 +112,11 @@ export default function DataTable() {
             <tbody>
               {shown.map((r) => (
                 <tr key={r.level} className={myLevel !== undefined && r.level === myLevel + 1 ? "mine" : ""}>
-                  <th className="mono">{entry?.kind === "one_time" ? "—" : r.level}</th>
+                  <th className="mono">{entry?.kind === "one_time" ? "—" : r.level}{entry?.id === "botnet" && <span className="tier-name"> {levelName("botnet", r.level)}</span>}</th>
                   {r.cells.map((c, i) => (
                     <Cell key={i} l={c} empty={isChar ? "start" : "n/a"} onOpen={() => setOpen(isChar
                       ? { title: `XP to reach LVL ${r.level} (shown at LVL ${r.level - 1})`, type: "level_req", level: r.level - 1 }
-                      : { title: `${entry!.name}${entry!.kind === "one_time" ? "" : ` Lv ${r.level}`} · ${COLS[i].label}`, type: COLS[i].type, method: COLS[i].method, upgradeId: entry!.id, level: r.level })} />
+                      : { title: `${entry!.name}${entry!.kind === "one_time" ? "" : ` ${levelName(entry!.id, r.level)}`} · ${COLS[i].label}`, type: COLS[i].type, method: COLS[i].method, upgradeId: entry!.id, level: r.level })} />
                   ))}
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { newId } from "../data/repository";
-import { CATALOG, CATEGORY_LABEL, getEntry, methodsFor } from "../domain/catalog";
+import { CATALOG, CATEGORY_LABEL, getEntry, methodsFor, levelName } from "../domain/catalog";
 import { addXp, inferExpGained } from "../domain/exp";
 import { isVerified, methodLabel } from "../domain/knowledge";
 import { missingKey, planPurchase } from "../domain/purchase";
@@ -146,7 +146,7 @@ export default function Purchase() {
       <div className="screen">
         <div className="success-hero">
           <div className="success-icon">✓</div>
-          <h1>{entry.name} {entry.kind === "one_time" ? "purchased" : `upgraded to Lv ${r.toLevel}`}</h1>
+          <h1>{entry.name} {entry.kind === "one_time" ? "purchased" : `upgraded to ${levelName(entry.id, r.toLevel)}`}</h1>
           {done.leveledUp > 0 && <div className="levelup">Level up! You're now LVL {r.after.level}</div>}
         </div>
         <Card>
@@ -204,7 +204,7 @@ export default function Purchase() {
       <div className="screen">
         <button className="link" onClick={() => setPhase("form")}>‹ Back</button>
         <h1>Your stats now</h1>
-        <p className="lead">Nobody knows how much XP {entry.name} Lv {next} gives yet. Enter what your game home screen shows <b>after buying</b> and the app works it out.</p>
+        <p className="lead">Nobody knows how much XP {entry.name} {levelName(entry.id, next)} gives yet. Enter what your game home screen shows <b>after buying</b> and the app works it out.</p>
         <Card>
           <div className="hint">Before: <span className="mono">{stateText(b.state)}</span></div>
           {(() => {
@@ -247,7 +247,7 @@ export default function Purchase() {
                 const maxed = (e.maxLevel !== null && lvl >= e.maxLevel) || (e.kind === "one_time" && lvl >= 1);
                 return (
                   <option key={e.id} value={e.id} disabled={maxed}>
-                    {e.name} — {e.kind === "one_time" ? (lvl >= 1 ? "owned" : "not owned") : maxed ? `Lv ${lvl} (max)` : `Lv ${lvl} → ${lvl + 1}`}
+                    {e.name} — {e.kind === "one_time" ? (lvl >= 1 ? "owned" : "not owned") : maxed ? `${levelName(e.id, lvl)} (max)` : `${levelName(e.id, lvl)} → ${levelName(e.id, lvl + 1)}`}
                   </option>
                 );
               })}
@@ -267,7 +267,7 @@ export default function Purchase() {
       {plan?.errors.map((e) => <Notice key={e} tone="bad">{e}</Notice>)}
 
       {entry && plan && plan.errors.length === 0 && (
-        <Card title={`2 · Price for ${entry.kind === "one_time" ? entry.name : `Lv ${next}`}`}>
+        <Card title={`2 · Price for ${entry.kind === "one_time" ? entry.name : levelName(entry.id, next)}`}>
           <input className="input mono big-input" inputMode="numeric" pattern="[0-9]*" aria-label="Price"
             value={priceText} onChange={(e) => setPriceText(e.target.value.replace(/[^\d]/g, ""))}
             placeholder="Price shown in game" />

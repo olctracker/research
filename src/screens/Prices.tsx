@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { newId } from "../data/repository";
-import { CATEGORY_LABEL } from "../domain/catalog";
+import { CATEGORY_LABEL, levelName } from "../domain/catalog";
 import { RELIABILITY_LABEL } from "../domain/knowledge";
 import { needsEntry, NextPriceRow, nextPriceRows } from "../domain/nextPrices";
 import type { Category, Method, PriceObservation } from "../domain/types";
@@ -36,7 +36,8 @@ function PriceRow({ row, onSave }: { row: NextPriceRow; onSave: (row: NextPriceR
           <div className="row-title">{entry.name}</div>
           <div className="hint mono">
             {oneTime ? (status === "owned" ? "Purchased" : "Not purchased")
-              : status === "maxed" ? `Lv ${row.currentLevel} · max level`
+              : status === "maxed" ? `${levelName(entry.id, row.currentLevel)} · max level`
+              : entry.id === "botnet" ? <>{levelName("botnet", row.currentLevel)} → <b>{levelName("botnet", row.nextLevel)}</b></>
               : <>Lv {row.currentLevel} → <b>{row.nextLevel}</b></>}
           </div>
         </div>
@@ -57,7 +58,7 @@ function PriceRow({ row, onSave }: { row: NextPriceRow; onSave: (row: NextPriceR
       {showInput && (
         <div className="price-entry">
           <input className="input mono" inputMode="numeric" pattern="[0-9]*" aria-label={`${entry.name} price for level ${row.nextLevel}`}
-            placeholder={`Price for ${oneTime ? entry.name : `Lv ${row.nextLevel}`}`} value={text}
+            placeholder={`Price for ${oneTime ? entry.name : levelName(entry.id, row.nextLevel)}`} value={text}
             onChange={(e) => setText(e.target.value.replace(/[^\d]/g, ""))} />
           <button className="btn primary" disabled={busy || !text} onClick={save}>{busy ? "…" : "Save"}</button>
           {editing && <button className="btn ghost" onClick={() => { setEditing(false); setText(""); }}>Cancel</button>}

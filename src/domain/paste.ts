@@ -12,8 +12,8 @@ import { CATALOG, getEntry } from "./catalog";
 export const MODEL_LEVELS: Record<string, { upgradeId: string; level: number }> = Object.fromEntries([
   ...["Raider", "Raider II", "Raider III", "Bolt", "Bolt II", "Bolt III", "Nova", "Nova II", "Nova III", "Nova S", "Nova X", "Nova Ultra"]
     .map((n, i) => [n, { upgradeId: "device", level: i + 1 }]),
-  ...["Dial-up", "Cable", "Cable+", "4G LTE", "5G", "5G+", "Fiber", "Fiber+", "10G Fiber", "10G Fiber+", "Quantum Link"]
-    .map((n, i) => [n, { upgradeId: "network", level: i + 1 }]),
+  ...["Cable", "Cable+", "4G LTE", "5G", "5G+", "Fiber", "Fiber+", "10G Fiber", "10G Fiber+", "Quantum Link"]
+    .map((n, i) => [n, { upgradeId: "network", level: i + 2 }]),
   ...["Free", "Node", "Cluster", "Grid", "Farm", "Hive", "Nexus"]
     .map((n, i) => [n, { upgradeId: "botnet", level: i + 1 }])
 ]);

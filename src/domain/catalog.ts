@@ -67,3 +67,15 @@ export function methodsFor(entry: CatalogEntry): ("store" | "download")[] {
   if (entry.download) m.push("download");
   return m;
 }
+
+/** Botnet tiers by level (hackex.net lists them as tier 0–6; tier 0 = level 1). */
+export const BOTNET_TIERS: readonly { name: string; slots: number }[] = [
+  { name: "Free", slots: 2 }, { name: "Node", slots: 4 }, { name: "Cluster", slots: 8 }, { name: "Grid", slots: 16 },
+  { name: "Farm", slots: 28 }, { name: "Hive", slots: 44 }, { name: "Nexus", slots: 64 }
+];
+
+/** How the game names a level: Botnet tiers have names (Hive), everything else is "Lv 6". */
+export function levelName(upgradeId: string, level: number): string {
+  if (upgradeId === "botnet") return BOTNET_TIERS[level - 1]?.name ?? `Lv ${level}`;
+  return `Lv ${level}`;
+}

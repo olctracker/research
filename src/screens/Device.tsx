@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CATALOG, CATEGORY_LABEL, defaultLevels, validateLevel } from "../domain/catalog";
+import { BOTNET_TIERS, CATALOG, CATEGORY_LABEL, defaultLevels, validateLevel } from "../domain/catalog";
 import type { Category, PlayerState } from "../domain/types";
 import { newId } from "../data/repository";
 import { newLevelReqs } from "../domain/record";
@@ -95,9 +95,15 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
               <li key={e.id} className="row">
                 <div className="grow">
                   <div className="row-title">{e.name}</div>
-                  <div className="hint">{e.maxLevel !== null ? `Max ${e.maxLevel}` : "No known cap"} · new game starts at {e.startLevel}</div>
+                  <div className="hint">{e.id === "botnet" ? "Tier name from the Apps screen" : `${e.maxLevel !== null ? `Max ${e.maxLevel}` : "No known cap"} · new game starts at ${e.startLevel}`}</div>
                 </div>
-                <Stepper label={`${e.name} level`} value={levels[e.id] ?? e.startLevel} min={0} max={e.maxLevel} onChange={(v) => setLevel(e.id, v)} />
+                {e.id === "botnet" ? (
+                  <select className="input tier-select" aria-label="Botnet tier" value={levels.botnet ?? 1} onChange={(ev) => setLevel("botnet", Number(ev.target.value))}>
+                    {BOTNET_TIERS.map((t, i) => <option key={t.name} value={i + 1}>{t.name} · {t.slots} slots</option>)}
+                  </select>
+                ) : (
+                  <Stepper label={`${e.name} level`} value={levels[e.id] ?? e.startLevel} min={0} max={e.maxLevel} onChange={(v) => setLevel(e.id, v)} />
+                )}
               </li>
             ))}
           </ul>
