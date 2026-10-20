@@ -25,7 +25,7 @@ export default function Device({ onDone, first = false }: { onDone: () => void; 
   function rebooted() {
     if (!confirm(`Record a reboot?\n\nThis sets Reboots to ${reboots + 1}, your character to LVL 1, and every program back to its starting level. Check the numbers, then tap Save.`)) return;
     setReboots(reboots + 1);
-    const req = kb.levelRequirement(1).value;
+    const req = kb.reqFn()(1);
     setChar({ level: "1", exp: "0", required: req !== null ? String(req) : "" });
     setLevels((l) => {
       const next = { ...l };

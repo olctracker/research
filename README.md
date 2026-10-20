@@ -12,7 +12,7 @@ A phone-friendly web app for recording Hack EX2 upgrade purchases, working out t
 - **Store Prices** / **Keygen Prices:** the price of each program's **next** level, which is all the game shows. The menu count is how many you can see in game that nobody has entered yet.
 - **Purchase:** pick the software, choose Store or Keygen, check the price, and confirm your LVL and XP. Your device then updates. If the XP reward is known, it's added automatically, levelling you up with the leftover carried over (LVL 26 at 6,232/19,970 + 34,000 → LVL 27 at 20,262). If not, you enter your stats after buying and the app works it out.
 - **History**
-- **Data Table:** pick a program (or Character levels) to see every level's store and Keygen price and XP, so you know exactly what's missing.
+- **Data Table:** pick a program (or Character levels) to see every level's store and Keygen price and XP, so you know exactly what's missing. Character rows show the XP needed to **reach** that level (LVL 2 = 589).
 - **Coverage & Conflicts**
 - **Settings**
 
@@ -125,6 +125,7 @@ npm run build                # type-checks and builds into dist/
 - **Download data model:** one transaction. Cost is the observed combined total. If only per-level download *components* are known, their sum is shown, clearly labelled as an estimate. EXP counts the destination level only.
 - **Keygen:** a download to level N needs Keygen N or higher (working rule, still being verified).
 - **Defensive discount (15%):** applies to Firewall, Password Encryptor, Antivirus, Proxy and Trace store purchases. Prices are stored as the final amount charged, and the rounding rule is still being researched.
+- **Formulas (src/domain/formulas.ts):** character XP target at LVL L = ceil(230 × (L+1)^1.3544), verified on LVL 1 and 24–30; it fills the XP target automatically and fills gaps in the Data Table (blue italics). Firewall store XP = floor(136 × L^1.25) is marked *likely* (≈ grey). Reports that disagree with a formula get a red ≠.
 - **Character EXP:** XP carries over. Passing the target levels you up and only the leftover counts toward the next level (LVL 26 at 6,232/19,970 + 34,000 → LVL 27 at 20,262/20,978, confirmed in game). It's worked out level by level using each level's own requirement. If any requirement in between is unknown, the result is shown as "at least X", never as a made-up exact number.
 - **Reliability** of each value: Unknown → Observed once → Repeated observation → Confirmed (admin only). Disagreeing observations are all kept and shown as a **conflict**. They are never averaged.
 

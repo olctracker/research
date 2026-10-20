@@ -137,7 +137,7 @@ function EditForm({ row, busy, onSave, onCancel }: {
   return (
     <div className="edit-form">
       <div className="grid2">
-        <label className="field">{row.type === "level_req" ? "Character LVL" : "Level (the level it took you to)"}
+        <label className="field">{row.type === "level_req" ? "Shown at LVL (reaches the next one)" : "Level (the level it took you to)"}
           <input className="input mono" inputMode="numeric" value={level} onChange={(e) => setLevel(e.target.value)} />
         </label>
         <label className="field">{valueLabel}

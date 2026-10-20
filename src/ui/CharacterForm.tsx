@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { parseHome } from "../domain/paste";
+import { charTarget } from "../domain/formulas";
 import { validateCharacter } from "../domain/exp";
 import type { CharacterState } from "../domain/types";
 import { parseWhole } from "./components";
@@ -31,10 +32,22 @@ export function CharacterForm({ draft, onChange, autoFocus }: { draft: CharDraft
     <input
       id={`${id}-${k}`} aria-label={label} className="input mono" inputMode="numeric" pattern="[0-9]*" autoComplete="off"
       value={draft[k]} placeholder={extra?.placeholder} autoFocus={extra?.autoFocus}
-      onChange={(e) => onChange({ ...draft, [k]: e.target.value.replace(/[^\d]/g, "") })}
+      onChange={(e) => {
+        const v = e.target.value.replace(/[^\d]/g, "");
+        if (k === "level") setLevel(v); else onChange({ ...draft, [k]: v });
+      }}
     />
   );
   const [quick, setQuick] = useState("");
+  const lvl = parseWhole(draft.level);
+  const target = lvl !== null ? charTarget(lvl) : null;
+  const typedReq = parseWhole(draft.required);
+  /** Changing LVL fills the XP target from the verified formula. */
+  const setLevel = (v: string) => {
+    const n = parseWhole(v);
+    const t = n !== null ? charTarget(n) : null;
+    onChange({ ...draft, level: v, required: t !== null ? String(t) : draft.required });
+  };
   /** One box: type "20262 / 20978" (or "27 20262 20978"), or paste the whole home screen. */
   function onQuick(v: string) {
     setQuick(v);
@@ -63,6 +76,9 @@ export function CharacterForm({ draft, onChange, autoFocus }: { draft: CharDraft
         </div>
       </div>
     </div>
+    {target !== null && typedReq !== null && typedReq !== target && (
+      <p className="hint warn-text">The formula says LVL {lvl} needs {target.toLocaleString()}. Double-check the number after the "/" in your game.</p>
+    )}
     </>
   );
 }

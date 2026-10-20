@@ -11,13 +11,23 @@ const CLS: Record<Reliability, string> = {
   unknown: "c-unknown", observed_once: "c-once", repeated: "c-repeated", confirmed: "c-confirmed", conflict: "c-conflict"
 };
 
-function Cell({ l, onOpen }: { l: Lookup | null; onOpen: () => void }) {
-  if (!l) return <td className="c-na" title="Not applicable">n/a</td>;
-  const [cls, title, text] =
+function Cell({ l, onOpen, empty = "n/a" }: { l: Lookup | null; onOpen: () => void; empty?: string }) {
+  if (!l) return <td className="c-na" title={empty === "n/a" ? "Not applicable" : undefined}>{empty}</td>;
+  const p = l.predicted ?? null;
+  const formulaWord = l.predictedStatus === "verified" ? "Formula" : "Likely formula";
+  let [cls, title, text] =
     l.reliability === "unknown" ? ["c-unknown", "Missing", "—"]
     : l.reliability === "conflict" ? ["c-conflict", `Conflict: ${l.values.join(" / ")}`, l.values.map(fmt).join("/")]
     : [CLS[l.reliability], `${RELIABILITY_LABEL[l.reliability]} (${l.count})`, fmt(l.value)];
-  return <td className={`${cls} tap`} title={title}><button className="cell-btn" onClick={onOpen}>{text}</button></td>;
+  if (l.reliability === "unknown" && p !== null) {
+    [cls, title, text] = [l.predictedStatus === "verified" ? "c-formula" : "c-likely", `${formulaWord} (nobody has reported it yet)`, `${l.predictedStatus === "verified" ? "" : "≈"}${fmt(p)}`];
+  }
+  const off = p !== null && l.reliability !== "unknown" && !l.values.every((v) => v === p);
+  return (
+    <td className={`${cls} tap${off ? " c-off" : ""}`} title={off ? `${title} · ${formulaWord} says ${fmt(p)}` : title}>
+      <button className="cell-btn" onClick={onOpen}>{text}{off && <span className="off-mark" aria-label={`${formulaWord} says ${fmt(p)}`}> ≠</span>}</button>
+    </td>
+  );
 }
 
 const COLS: { type: "price" | "exp"; method: "store" | "download"; label: string }[] = [
@@ -37,7 +47,7 @@ export default function DataTable() {
   const rows = useMemo(() => {
     if (isChar) {
       const hi = Math.max(30, kb.highestObservedCharacterLevel() + 3, (player?.character.level ?? 1) + 3) + extra;
-      return Array.from({ length: hi }, (_, i) => ({ level: i + 1, cells: [kb.levelRequirement(i + 1)] }));
+      return Array.from({ length: hi + 1 }, (_, i) => ({ level: i + 1, cells: [i === 0 ? null : kb.levelRequirement(i)] }));
     }
     const e = entry!;
     if (e.kind === "one_time") return [{ level: 1, cells: [kb.oneTimeItemPrice(e.id), kb.oneTimeItemExp(e.id), null, null] }];
@@ -71,7 +81,7 @@ export default function DataTable() {
 
       <Card>
         <select className="input" aria-label="Show data for" value={subject} onChange={(e) => { setSubject(e.target.value); setExtra(0); }}>
-          <option value="character">Character levels (XP needed)</option>
+          <option value="character">Character levels (XP to reach)</option>
           {GROUPS.map((g) => (
             <optgroup key={g} label={CATEGORY_LABEL[g]}>
               {CATALOG.filter((e) => e.category === g).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -91,7 +101,7 @@ export default function DataTable() {
           <table className="table data-table">
             <thead>
               {isChar ? (
-                <tr><th>LVL</th><th>XP needed</th></tr>
+                <tr><th>LVL</th><th>XP to reach</th></tr>
               ) : (
                 <>
                   <tr><th rowSpan={2}>Lv</th><th colSpan={2}>Store</th><th colSpan={2}>Keygen</th></tr>
@@ -101,11 +111,11 @@ export default function DataTable() {
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.level} className={myLevel !== undefined && (isChar ? r.level === myLevel : r.level === myLevel + 1) ? "mine" : ""}>
+                <tr key={r.level} className={myLevel !== undefined && r.level === myLevel + 1 ? "mine" : ""}>
                   <th className="mono">{entry?.kind === "one_time" ? "—" : r.level}</th>
                   {r.cells.map((c, i) => (
-                    <Cell key={i} l={c} onOpen={() => setOpen(isChar
-                      ? { title: `Character LVL ${r.level} · XP needed`, type: "level_req", level: r.level }
+                    <Cell key={i} l={c} empty={isChar ? "start" : "n/a"} onOpen={() => setOpen(isChar
+                      ? { title: `XP to reach LVL ${r.level} (shown at LVL ${r.level - 1})`, type: "level_req", level: r.level - 1 }
                       : { title: `${entry!.name}${entry!.kind === "one_time" ? "" : ` Lv ${r.level}`} · ${COLS[i].label}`, type: COLS[i].type, method: COLS[i].method, upgradeId: entry!.id, level: r.level })} />
                   ))}
                 </tr>
@@ -122,9 +132,12 @@ export default function DataTable() {
           <span><i className="seg-once" /> Seen once</span>
           <span><i className="seg-conflict" /> Conflict</span>
           <span>— Missing</span>
+          <span className="c-formula">1,234 Formula</span>
+          <span className="c-likely">≈1,234 Likely formula</span>
+          <span><b className="bad-text">≠</b> Disagrees with formula</span>
         </div>
         <p className="hint">Tap any value to see who reported it{isAdmin ? ", and to move a report to the right level, correct it or reject it" : " and to remove your own mistakes"}.</p>
-        {myLevel !== undefined && <p className="hint">The highlighted row is {isChar ? "your current level" : "your next level"}.</p>}
+        {myLevel !== undefined && <p className="hint">The highlighted row is your next level{isChar ? `: the XP you need to reach LVL ${myLevel + 1}` : ""}.</p>}
         {entry && !entry.download && entry.kind !== "one_time" && <p className="hint">{entry.name} can't be bought with Keygen, so those columns are n/a.</p>}
       </Card>
       {open && <ReportsSheet target={open} onClose={() => setOpen(null)} />}

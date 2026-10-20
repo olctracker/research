@@ -161,3 +161,16 @@ describe("Paste: Store", () => {
     assert.ok(parseStore(APPS_FRIEND).warnings[0].includes("Apps"));
   });
 });
+
+import { charTarget, predictedStoreXp } from "../src/domain/formulas";
+describe("Formulas", () => {
+  test("character XP target matches every value seen in game", () => {
+    const seen: Record<number, number> = { 1: 589, 24: 17993, 25: 18975, 26: 19970, 27: 20978, 29: 23033, 30: 24079 };
+    for (const [l, v] of Object.entries(seen)) assert.equal(charTarget(Number(l)), v, `LVL ${l}`);
+  });
+  test("Firewall store XP (likely) matches 24–26", () => {
+    assert.deepEqual([24, 25, 26].map((l) => predictedStoreXp("firewall", l)!.value), [7224, 7602, 7984]);
+    assert.equal(predictedStoreXp("firewall", 27)!.value, 8370);
+    assert.equal(predictedStoreXp("spam", 5), null);
+  });
+});

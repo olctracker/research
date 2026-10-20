@@ -4,6 +4,7 @@
 import type {
   ExpObservation, LevelRequirementObservation, Method, ObservationSet, ObservationStatus, PriceObservation
 } from "./types";
+import { charTarget, FormulaStatus, predictedStoreXp } from "./formulas";
 
 export type Reliability = "unknown" | "observed_once" | "repeated" | "confirmed" | "conflict";
 
@@ -18,6 +19,9 @@ export interface Lookup {
   /** True when a usable value exists but some other observation disagrees (only possible with a confirmed value). */
   disputed: boolean;
   ids: string[];
+  /** What the formula says, when there is one (fills gaps; flags disagreeing reports). */
+  predicted?: number | null;
+  predictedStatus?: FormulaStatus;
 }
 
 export const RELIABILITY_LABEL: Record<Reliability, string> = {
@@ -95,7 +99,9 @@ export class Knowledge {
     return consensus((this.storePrice.get(key(upgradeId, toLevel)) ?? []).map(fromPrice));
   }
   storeLevelExp(upgradeId: string, toLevel: number): Lookup {
-    return consensus((this.perLevelExp.get(key(upgradeId, toLevel)) ?? []).map(fromExp));
+    const l = consensus((this.perLevelExp.get(key(upgradeId, toLevel)) ?? []).map(fromExp));
+    const p = predictedStoreXp(upgradeId, toLevel);
+    return p ? { ...l, predicted: p.value, predictedStatus: p.status } : l;
   }
   downloadCombinedPrice(upgradeId: string, fromLevel: number, toLevel: number): Lookup {
     return consensus((this.dlCombined.get(key(upgradeId, fromLevel, toLevel)) ?? []).map(fromPrice));
@@ -113,12 +119,13 @@ export class Knowledge {
     return this.storeLevelExp(upgradeId, 1);
   }
   levelRequirement(level: number): Lookup {
-    return consensus((this.reqs.get(String(level)) ?? []).map(fromReq));
+    const l = consensus((this.reqs.get(String(level)) ?? []).map(fromReq));
+    return { ...l, predicted: charTarget(level), predictedStatus: "verified" };
   }
 
-  /** Requirement lookup for XP inference: returns a number only when usable. */
+  /** XP target at a character level: what players reported, otherwise the verified formula. */
   reqFn(): (level: number) => number | null {
-    return (level) => this.levelRequirement(level).value;
+    return (level) => this.levelRequirement(level).value ?? charTarget(level);
   }
 
   /** Highest destination level seen in any observation for this upgrade (for research ranges). */
