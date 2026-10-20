@@ -152,8 +152,7 @@ describe("Paste: Store", () => {
     const s = parseStore(STORE);
     const got = Object.fromEntries(s.items.map((i) => [i.upgradeId, [i.toLevel, i.price]]));
     assert.deepEqual(got, {
-      bypasser: [21, 41877], password_encryptor: [2, 2303], password_cracker: [21, 57581],
-      device: [5, 28000], network: [10, 120000], notepad: [1, 5000]
+      bypasser: [21, 41877], password_encryptor: [2, 2303], password_cracker: [21, 57581], notepad: [1, 5000]
     });
     assert.ok(!("firewall" in got));
   });

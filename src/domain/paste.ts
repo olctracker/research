@@ -4,19 +4,14 @@
 // Home:  "R3  LVL 24 // REP 1351 … // XP PROGRESS 5870 / 17993"
 // Apps:  "Firewall  LVL 21 (+3)"  ·  "LOCKED  LVL 44 available  52,375 Crypto"  ·  "Trace  NOT INSTALLED"
 // Store: "Bypasser  LVL 21  Breaks through …  41,877 Crypto  UPGRADE"   (LVL = the level you'd be buying)
-//        Device / Network / Botnet show a model name instead (Bolt II, 10G Fiber+, Hive …).
+//        Botnet shows a tier name (Hive …). Device / Network names vary by reboot class, so they aren't read here.
 
 import { CATALOG, getEntry } from "./catalog";
 
-/** Model names in the store, mapped to the level they are. (Level 1 is what you start with.) */
-export const MODEL_LEVELS: Record<string, { upgradeId: string; level: number }> = Object.fromEntries([
-  ...["Raider", "Raider II", "Raider III", "Bolt", "Bolt II", "Bolt III", "Nova", "Nova II", "Nova III", "Nova S", "Nova X", "Nova Ultra"]
-    .map((n, i) => [n, { upgradeId: "device", level: i + 1 }]),
-  ...["Cable", "Cable+", "4G LTE", "5G", "5G+", "Fiber", "Fiber+", "10G Fiber", "10G Fiber+", "Quantum Link"]
-    .map((n, i) => [n, { upgradeId: "network", level: i + 2 }]),
-  ...["Free", "Node", "Cluster", "Grid", "Farm", "Hive", "Nexus"]
-    .map((n, i) => [n, { upgradeId: "botnet", level: i + 1 }])
-]);
+/** Botnet tier names (the game shows Botnet by name, not number). Device and Network are read by number only. */
+export const MODEL_LEVELS: Record<string, { upgradeId: string; level: number }> = Object.fromEntries(
+  ["Free", "Node", "Cluster", "Grid", "Farm", "Hive", "Nexus"].map((n, i) => [n, { upgradeId: "botnet", level: i + 1 }])
+);
 
 const num = (s: string) => Number(s.replace(/[,\s]/g, ""));
 const clean = (t: string) => t.replace(/\r/g, "").replace(/[   ]/g, " ");
