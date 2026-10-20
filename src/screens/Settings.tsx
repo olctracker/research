@@ -179,7 +179,6 @@ export default function Settings() {
 
       <Card title="Coming later">
         <ul className="tight muted">
-          <li>Formula discovery (fit and test cost/XP formulas)</li>
           <li>Cheapest path to a target level</li>
           <li>Reboot planning — off until reboot rules are verified</li>
         </ul>

@@ -3,6 +3,7 @@ import { needsEntry, nextPriceRows } from "./domain/nextPrices";
 import Dashboard from "./screens/Dashboard";
 import DataTable from "./screens/DataTable";
 import DeviceInput from "./screens/DeviceInput";
+import Formulas from "./screens/Formulas";
 import Device from "./screens/Device";
 import History from "./screens/History";
 import Prices from "./screens/Prices";
@@ -26,6 +27,7 @@ const ICONS = {
   history: "M12 7v5l3 2M21 12a9 9 0 11-9-9 9 9 0 019 9z",
   research: "M4 20V11M10 20V5M16 20v-6M21 20H3",
   data: "M4 5h16v14H4zM4 10h16M4 15h16M10 5v14",
+  formulas: "M9 11l2 2 4-4M5 4h14v16H5z",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15H3a2 2 0 010-4h.1a1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 009 3.1V3a2 2 0 014 0v.1a1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 9h.1a2 2 0 010 4H21a1.7 1.7 0 00-1.6 2z"
 };
 
@@ -55,6 +57,7 @@ function useNav(): NavSection[] {
       {
         title: "Research", items: [
           { route: "data", label: "Data Table", icon: ICONS.data },
+          { route: "formulas", label: "Formula Checklist", icon: ICONS.formulas },
           { route: "research", label: "Coverage & Conflicts", icon: ICONS.research, badge: isAdmin ? conflicts.length : 0, tone: "bad" }
         ]
       },
@@ -142,6 +145,7 @@ export default function App() {
       {route === "buy" && <Purchase />}
       {route === "history" && <History />}
       {route === "data" && <DataTable />}
+      {route === "formulas" && <Formulas />}
       {route === "research" && <Research />}
       {route === "settings" && <Settings />}
     </Shell>

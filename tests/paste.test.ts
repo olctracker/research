@@ -174,3 +174,28 @@ describe("Formulas", () => {
     assert.equal(predictedStoreXp("spam", 5), null);
   });
 });
+
+import { formulaKeyPrice, formulaStorePrice } from "../src/domain/formulas";
+import { SEED_OBSERVATIONS } from "../src/domain/seed";
+import { buildChecklist, isDone } from "../src/domain/checklist";
+import { Knowledge } from "../src/domain/knowledge";
+describe("Price formulas vs every seeded real price", () => {
+  test("all Keygen key prices match", () => {
+    const keys = SEED_OBSERVATIONS.prices.filter((p) => p.method === "download");
+    assert.ok(keys.length >= 18);
+    for (const k of keys) assert.equal(formulaKeyPrice(k.upgradeId, k.fromLevel, k.toLevel), k.cost, `${k.upgradeId} ${k.fromLevel}->${k.toLevel}`);
+  });
+  test("all software store prices match", () => {
+    const st = SEED_OBSERVATIONS.prices.filter((p) => p.method === "store" && p.priceBasis === "final" && p.costType === "per_level" && !["device", "network", "botnet"].includes(p.upgradeId));
+    for (const p of st) assert.equal(formulaStorePrice(p.upgradeId, p.toLevel), p.cost, `${p.upgradeId} ${p.toLevel}`);
+  });
+  test("checklist: seeds tick nothing on small key jumps; a 1-level key ticks and matches", () => {
+    const g = buildChecklist(SEED_OBSERVATIONS, new Knowledge(SEED_OBSERVATIONS));
+    const key1 = g[0].items.find((i) => i.id === "key-1")!;
+    assert.equal(isDone(key1), false);
+    const one = { ...SEED_OBSERVATIONS.prices.find((p) => p.method === "download")!, id: "k1", upgradeId: "spam", fromLevel: 20, toLevel: 21, cost: formulaKeyPrice("spam", 20, 21)! };
+    const obs = { ...SEED_OBSERVATIONS, prices: [...SEED_OBSERVATIONS.prices, one] };
+    const item = buildChecklist(obs, new Knowledge(obs))[0].items.find((i) => i.id === "key-1")!;
+    assert.equal(item.evidence[0].match, true);
+  });
+});
