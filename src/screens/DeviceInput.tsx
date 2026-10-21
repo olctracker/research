@@ -38,17 +38,29 @@ export default function DeviceInput() {
   const [homeText, setHomeText] = useState("");
   const [homeMsg, setHomeMsg] = useState<Msg>(null);
   const home = useMemo(() => (homeText.trim() ? parseHome(homeText) : null), [homeText]);
-  const homeState = home && player ? {
+  const homeState = home && player && (mine || home.level !== null) ? {
     level: home.level ?? player.character.level,
     exp: home.exp,
     required: home.required
   } : null;
-  const homeError = !homeState ? null
+  const homeError = !homeState ? (home && !mine ? "Include their LVL, e.g. LVL 52 30000 / 47800" : null)
     : homeState.exp === null || homeState.required === null ? "Couldn't find your XP. It looks like 5870 / 17993."
     : validateCharacter({ level: homeState.level, exp: homeState.exp, required: homeState.required });
 
   async function saveHome() {
     if (!player || !homeState || homeError || homeState.exp === null || homeState.required === null) return;
+    if (!mine) {
+      // A friend's Home screen: only share their XP target. Your device stays as it is.
+      const now = new Date().toISOString();
+      const reqs = newLevelReqs([{ level: homeState.level, exp: homeState.exp, required: homeState.required }], observations, user.username, now, newId)
+        .map((r) => ({ ...r, reboots: home?.reboots ?? null, notes: "Home screen (a friend's game)" }));
+      try {
+        if (reqs.length) await contribute({ prices: [], exp: [], levelReqs: reqs });
+        setHomeMsg({ tone: "good", text: reqs.length ? `Shared: LVL ${homeState.level} needs ${fmt(homeState.required)} XP. Thanks!` : "Already shared: someone recorded this level's target." });
+        setHomeText("");
+      } catch (e) { setHomeMsg({ tone: "bad", text: e instanceof Error ? e.message : String(e) }); }
+      return;
+    }
     const character = { level: homeState.level, exp: homeState.exp, required: homeState.required };
     const next = { ...player, character, reboots: home?.reboots ?? player.reboots, updatedAt: new Date().toISOString() };
     try {
@@ -65,7 +77,9 @@ export default function DeviceInput() {
     p.status !== "rejected" && p.contributor === user.username && p.upgradeId === o.upgradeId && p.method === o.method &&
     p.fromLevel === o.fromLevel && p.toLevel === o.toLevel && p.cost === o.cost);
   const price = (o: Omit<PriceObservation, "id" | "contributor" | "createdAt" | "status" | "purchaseId" | "priceBasis">): PriceObservation => ({
-    ...o, id: newId(), contributor: user.username, createdAt: new Date().toISOString(), status: "observed", purchaseId: null, priceBasis: "final"
+    ...o, id: newId(), contributor: user.username, createdAt: new Date().toISOString(), status: "observed", purchaseId: null, priceBasis: "final",
+    // A friend's screen doesn't tell us their reboot count, so don't stamp it with yours.
+    ...(mine ? {} : { reboots: null })
   });
 
   // ---------------- Apps ----------------
@@ -148,12 +162,12 @@ export default function DeviceInput() {
       <Segmented label="Whose screen are you pasting?" value={whose} onChange={setWhose} options={[
         { value: "mine", label: "My game" }, { value: "friend", label: "A friend's game" }
       ]} />
-      {!mine && <Notice tone="info">Friend's screens only share prices. Your device and XP aren't changed.</Notice>}
+      {!mine && <Notice tone="info">Friend's screens only share prices and XP targets. Your device and XP aren't changed.</Notice>}
 
-      {mine && (
-        <Card title="Level & XP (Home screen)">
+      {(
+        <Card title={mine ? "Level & XP (Home screen)" : "Their Level & XP (Home screen)"}>
           <PasteBox label="Home screen or XP" value={homeText} onChange={(v) => { setHomeText(v); setHomeMsg(null); }}
-            placeholder={"Paste your Home screen, or just type\n20262 / 20978"} />
+            placeholder={mine ? "Paste your Home screen, or just type\n20262 / 20978" : "Paste their Home screen, or type their\nLVL 52 30000 / 47800"} />
           {homeState && !homeError && (
             <div className="found">
               <span>LVL <b className="mono">{homeState.level}</b>{home?.level == null && <span className="hint"> (unchanged)</span>}</span>
@@ -163,8 +177,8 @@ export default function DeviceInput() {
           )}
           {homeError && <Notice tone="warn">{homeError}</Notice>}
           {homeMsg && <Notice tone={homeMsg.tone}>{homeMsg.text}</Notice>}
-          {homeState && !homeError && <button className="btn primary full" onClick={saveHome}>Save to My Device</button>}
-          <p className="hint">Now: LVL {player.character.level} · {fmt(player.character.exp)} / {fmt(player.character.required)}</p>
+          {homeState && !homeError && <button className="btn primary full" onClick={saveHome}>{mine ? "Save to My Device" : "Share their XP target"}</button>}
+          {mine && <p className="hint">Now: LVL {player.character.level} · {fmt(player.character.exp)} / {fmt(player.character.required)}</p>}
         </Card>
       )}
 

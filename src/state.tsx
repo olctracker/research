@@ -137,7 +137,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       async contribute(c) {
         // Tag every report with the reporter's reboot count so formulas can tell groups apart.
         const rb = player?.reboots ?? 0;
-        const tag = <T extends { reboots?: number | null }>(rows: T[]) => rows.map((x) => ({ ...x, reboots: x.reboots ?? rb }));
+        // Only fill in the reboot count when the caller didn't say; null means "unknown" (e.g. a friend's screen).
+        const tag = <T extends { reboots?: number | null }>(rows: T[]) => rows.map((x) => ({ ...x, reboots: x.reboots === undefined ? rb : x.reboots }));
         c = { prices: tag(c.prices), exp: tag(c.exp), levelReqs: tag(c.levelReqs) };
         await r.contribute(c);
         await reloadObservations();
