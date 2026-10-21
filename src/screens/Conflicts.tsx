@@ -50,16 +50,31 @@ export default function Conflicts() {
         return (
           <Card key={g.key} title={<>{g.title} <span className="muted">· {g.subtitle}</span></>}>
             {g.challengesConfirmed && <Notice tone="warn">A newer report disagrees with the confirmed value.</Notice>}
+            {(() => {
+              const f = explain(g.options[0].rows[0]).formula;
+              if (f === null) return <div className="formula-predict none">No formula for this yet. Check the game.</div>;
+              const pick = g.options.find((o) => o.value === f);
+              return (
+                <div className={`formula-predict${pick ? "" : " none"}`}>
+                  <div>Formula predicts <b className="mono">{fmt(f)}</b></div>
+                  <div className="hint">{pick ? `${fmt(f)} matches one of the reports below.` : "Neither report matches. Check the game before choosing."}</div>
+                </div>
+              );
+            })()}
             <ul className="options">
-              {g.options.map((o) => {
+              {[...g.options].sort((a, b) => {
+                const f = explain(g.options[0].rows[0]).formula;
+                return Number(b.value === f) - Number(a.value === f);
+              }).map((o) => {
                 const ex = explain(o.rows[0]);
                 const t = explainText(ex);
                 return (
-                <li key={o.value} className={`option${o.confirmed ? " confirmed" : ""}`}>
+                <li key={o.value} className={`option${o.confirmed ? " confirmed" : ""}${ex.matches ? " formula-pick" : ""}`}>
                   <div className="option-head">
                     <span className="option-value mono">{fmt(o.value)}</span>
                     <span className="option-count">{o.rows.length} of {total} report{total === 1 ? "" : "s"}</span>
                     {o.confirmed && <span className="badge rel-confirmed">Confirmed</span>}
+                    {ex.matches && <span className="badge rel-confirmed">Formula's pick</span>}
                   </div>
                   {t && <div className={`formula-check ${ex.matches ? "good-text" : "bad-text"}`}>{ex.matches ? "✓" : "✗"} {t}</div>}
                   {ex.lookalike && <div className="lookalike">This number is exactly {ex.lookalike}</div>}
