@@ -4,7 +4,7 @@
 import type {
   ExpObservation, LevelRequirementObservation, Method, ObservationSet, ObservationStatus, PriceObservation
 } from "./types";
-import { charTarget, FormulaStatus, predictedStoreXp } from "./formulas";
+import { charTarget, FormulaStatus, hardwareXp, predictedStoreXp } from "./formulas";
 
 export type Reliability = "unknown" | "observed_once" | "repeated" | "confirmed" | "conflict";
 
@@ -100,7 +100,11 @@ export class Knowledge {
   }
   storeLevelExp(upgradeId: string, toLevel: number): Lookup {
     const l = consensus((this.perLevelExp.get(key(upgradeId, toLevel)) ?? []).map(fromExp));
-    const p = predictedStoreXp(upgradeId, toLevel);
+    let p = predictedStoreXp(upgradeId, toLevel);
+    if (!p) {
+      const price = this.storeLevelPrice(upgradeId, toLevel).value;
+      if (price !== null) p = hardwareXp(upgradeId, price);
+    }
     return p ? { ...l, predicted: p.value, predictedStatus: p.status } : l;
   }
   downloadCombinedPrice(upgradeId: string, fromLevel: number, toLevel: number): Lookup {
@@ -110,7 +114,10 @@ export class Knowledge {
     return consensus((this.dlComponent.get(key(upgradeId, toLevel)) ?? []).map(fromPrice));
   }
   downloadExp(upgradeId: string, toLevel: number): Lookup {
-    return consensus((this.txnExp.get(key(upgradeId, toLevel)) ?? []).map(fromExp));
+    const l = consensus((this.txnExp.get(key(upgradeId, toLevel)) ?? []).map(fromExp));
+    // A key gives the XP of the level it lands on (verified on 55 one-level keys).
+    const p = predictedStoreXp(upgradeId, toLevel);
+    return p ? { ...l, predicted: p.value, predictedStatus: p.status } : l;
   }
   oneTimeItemPrice(upgradeId: string): Lookup {
     return consensus((this.oneTimePrice.get(upgradeId) ?? []).map(fromPrice));

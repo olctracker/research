@@ -5,9 +5,10 @@
 //   = ceil(230 × (L+1)^1.3544). Matches every value seen: LVL 1 (589, a fresh account),
 //   24–27, 29, 30 (R3). Status: verified.
 //
-// Upgrade XP (store), per level L:
-//   Firewall = floor(136 × L^1.25) — matches L24–26 and predicted L27 (8,370) before it was bought. Status: verified
-//   (136 = base price 800 × 0.2 × 0.85 defensive discount; other programs not confirmed yet).
+// Upgrade XP for reaching level L (store, and Keygen keys land on the same XP):
+//   floor(0.2 × ceil(ceil(base × L^1.25) × 0.85 for defensive))  — the store-price recipe with L^1.25.
+//   Verified on 70 of 70 reports (16 store + 55 one-level keys, 11 programs, R2 and R3).
+// Hardware XP: Device = 25% of its price (4 of 4), Network = 20% (10 of 10), Botnet ≈ price ÷ 6 (2 points, likely).
 
 export type FormulaStatus = "verified" | "likely";
 
@@ -19,17 +20,18 @@ export function charTarget(level: number): number | null {
   return Math.ceil(230 * Math.pow(level + 1, 1.3544));
 }
 
-interface XpFormula { status: FormulaStatus; text: string; fn: (toLevel: number) => number }
-
-export const XP_FORMULAS: Record<string, XpFormula> = {
-  firewall: { status: "verified", text: "floor(136 × L^1.25)", fn: (l) => Math.floor(136 * Math.pow(l, 1.25)) }
-};
-
-/** Predicted store XP for reaching `toLevel`, or null when there's no formula yet. */
+/** Predicted software XP for reaching `toLevel` (store or key), or null when there's no formula. */
 export function predictedStoreXp(upgradeId: string, toLevel: number): { value: number; status: FormulaStatus } | null {
-  const f = XP_FORMULAS[upgradeId];
-  if (!f || toLevel < 1) return null;
-  return { value: f.fn(toLevel), status: f.status };
+  const v = formulaXp(upgradeId, toLevel);
+  return v === null ? null : { value: v, status: "verified" };
+}
+
+/** Hardware XP from its store price: Device 25%, Network 20% (verified), Botnet ÷ 6 (likely). */
+export function hardwareXp(upgradeId: string, price: number): { value: number; status: FormulaStatus } | null {
+  if (upgradeId === "device") return { value: Math.round(price * 0.25), status: "verified" };
+  if (upgradeId === "network") return { value: Math.round(price * 0.2), status: "verified" };
+  if (upgradeId === "botnet") return { value: Math.floor(price / 6), status: "likely" };
+  return null;
 }
 
 // ---------------------------------------------------------------- prices (verified on 17 store + 18 key prices)
@@ -57,8 +59,17 @@ export function formulaKeyPrice(upgradeId: string, fromLevel: number, toLevel: n
   return Math.ceil(s * 0.5 * Math.min(1, 0.3 + (0.7 * (jump - 1)) / 19));
 }
 
+/** XP for reaching level L: floor(0.2 × ceil(ceil(base × L^1.25) × discount)). Verified 70/70. */
+export function formulaXp(upgradeId: string, level: number): number | null {
+  const b = BASE_PRICE[upgradeId];
+  if (b === undefined || level < 1) return null;
+  const a = Math.ceil(b * Math.pow(level, 1.25));
+  const d = DEFENSIVE.has(upgradeId) ? Math.ceil(a * 0.85) : a;
+  return Math.floor(d * 0.2);
+}
+
 /**
- * Untested guesses for store XP of programs other than Firewall, built from Firewall (136 = 800 × 0.2 × 0.85):
+ * (Superseded by formulaXp.) Old guesses for store XP of programs other than Firewall, built from Firewall (136 = 800 × 0.2 × 0.85):
  * floor(0.2 × base × discount × L^1.25). "defensive" = the 0.85 only for defensive programs; "all" = 0.85 for everyone.
  */
 export function guessStoreXp(upgradeId: string, level: number): { defensiveOnly: number; all: number } | null {

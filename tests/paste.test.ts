@@ -167,10 +167,14 @@ describe("Formulas", () => {
     const seen: Record<number, number> = { 1: 589, 24: 17993, 25: 18975, 26: 19970, 27: 20978, 29: 23033, 30: 24079 };
     for (const [l, v] of Object.entries(seen)) assert.equal(charTarget(Number(l)), v, `LVL ${l}`);
   });
-  test("Firewall store XP (likely) matches 24–26", () => {
-    assert.deepEqual([24, 25, 26].map((l) => predictedStoreXp("firewall", l)!.value), [7224, 7602, 7984]);
-    assert.equal(predictedStoreXp("firewall", 27)!.value, 8370);
-    assert.equal(predictedStoreXp("spam", 5), null);
+  test("upgrade XP formula matches real reports across programs", () => {
+    assert.deepEqual([24, 25, 26, 27].map((l) => predictedStoreXp("firewall", l)!.value), [7224, 7602, 7984, 8370]);
+    // p4nda (R2): Keygen store XP and one-level key XP
+    assert.deepEqual([3, 4, 5, 6, 10].map((l) => predictedStoreXp("keygen", l)!.value), [473, 679, 897, 1127, 2134]);
+    assert.equal(predictedStoreXp("password_cracker", 5)!.value, 1645);
+    assert.equal(predictedStoreXp("spam", 7)!.value, 4099);
+    assert.equal(predictedStoreXp("bypasser", 3)!.value, 631);
+    assert.equal(predictedStoreXp("device", 5), null); // hardware uses its price instead
   });
 });
 

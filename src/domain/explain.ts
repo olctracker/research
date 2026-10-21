@@ -60,11 +60,13 @@ export function explain(r: Row): Explanation {
     }
     return { matches: null, formula: null, lookalike: null };
   }
-  // XP
-  if (r.method === "store" && r.expBasis === "per_level") {
+  // XP (store per level, or a key: same XP as the level it lands on)
+  if ((r.method === "store" && r.expBasis === "per_level") || r.method === "download") {
     const p = predictedStoreXp(r.upgradeId, r.toLevel);
     let lookalike: string | null = null;
     if (p && p.value !== r.exp) {
+      const other = SOFTWARE.find((e) => e.id !== r.upgradeId && predictedStoreXp(e.id, r.toLevel)?.value === r.exp);
+      if (other) lookalike = `${other.name}'s XP for Lv ${r.toLevel}. Wrong program picked?`;
       for (let d = 1; d <= 3 && !lookalike; d++) for (const l of [r.toLevel - d, r.toLevel + d]) {
         if (l >= 1 && predictedStoreXp(r.upgradeId, l)?.value === r.exp) { lookalike = `the XP for Lv ${l}. Level entered ${d} off?`; break; }
       }
