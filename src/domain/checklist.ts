@@ -96,7 +96,9 @@ export function buildChecklist(obs: ObservationSet, kb: Knowledge): CheckGroup[]
         { id: "xp-high", title: "Software XP above level 30", how: "Any program, store or key. Checks the curve holds at high levels.", evidence: xpEv(softXp.filter((e) => e.toLevel > 30)) },
         { id: "xp-keyjump", title: "XP from a key that jumps 2+ levels", how: "Any program. Does a bigger jump still give only the landing level's XP?", evidence: xpEv(xp.filter((e) => e.method === "download" && e.toLevel - e.fromLevel >= 2)) },
         { id: "xp-botnet", title: "XP for a third Botnet tier", how: "Botnet looks like price ÷ 6 from 2 tiers. One more confirms it.", evidence: (() => { const b = xpEv(storeXp.filter((e) => e.upgradeId === "botnet")); return b.length >= 3 ? b : []; })() },
-        { id: "xp-onetime", title: "XP for a one-time item", how: "Notepad or Message Encryptor.", evidence: xpEv(storeXp.filter((e) => ONE_TIME.has(e.upgradeId))) }
+        // One-time items each get their own test: no shared formula is assumed.
+        { id: "xp-notepad", title: "XP for Notepad", how: "Buy Notepad and enter your stats after. Its XP is recorded on its own.", evidence: xpEv(storeXp.filter((e) => e.upgradeId === "notepad")) },
+        { id: "xp-msgenc", title: "XP for Message Encryptor", how: "Buy Message Encryptor and enter your stats after. Its XP is recorded on its own.", evidence: xpEv(storeXp.filter((e) => e.upgradeId === "message_encryptor")) }
       ]
     },
     {
