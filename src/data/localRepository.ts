@@ -4,6 +4,7 @@
 // anyone with this browser can read the data. The first account created is the admin.
 
 import { SEED_OBSERVATIONS } from "../domain/seed";
+import { getEntry } from "../domain/catalog";
 import type { ObservationSet, ObservationStatus, PlayerState, PurchaseRecord } from "../domain/types";
 import {
   checkCredentials, Contribution, Flag, newId, normalizeUsername, ObservationType, PlayerSummary, Repository, SessionUser
@@ -158,7 +159,7 @@ export class LocalRepository implements Repository {
     r.notes = `${r.notes} [Withdrawn by reporter]`.trim();
     write(K.obs, o);
   }
-  async editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean) {
+  async editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean, upgradeId?: string) {
     this.requireAdmin();
     if (!(value >= 0)) throw new Error("Enter a value of 0 or more");
     if (!(toLevel >= 1)) throw new Error("Level must be 1 or more");
@@ -177,14 +178,21 @@ export class LocalRepository implements Repository {
     if (!r) throw new Error("Report not found");
     const delta = toLevel - r.toLevel;
     if (r.fromLevel + delta < 0) throw new Error("That level is too low for this report");
-    if ("cost" in r) { r.notes = `${r.notes} [Admin fixed ${day}: was Lv ${r.fromLevel}→${r.toLevel}, cost ${r.cost}]`.trim(); r.cost = value; }
-    else { r.notes = `${r.notes} [Admin fixed ${day}: was Lv ${r.fromLevel}→${r.toLevel}, ${r.exp} XP]`.trim(); r.exp = value; }
-    r.fromLevel += delta; r.toLevel += delta;
-    if (movePurchase && r.purchaseId && delta !== 0) {
+    const oldProg = r.upgradeId;
+    const prog = upgradeId || oldProg;
+    const progNote = prog !== oldProg ? `${oldProg} ` : "";
+    if (prog !== oldProg) {
+      const e = getEntry(prog);
+      if (r.method === "download" && !e.download) throw new Error(`${e.name} cannot be downloaded`);
+    }
+    if ("cost" in r) { r.notes = `${r.notes} [Admin fixed ${day}: was ${progNote}Lv ${r.fromLevel}→${r.toLevel}, cost ${r.cost}]`.trim(); r.cost = value; }
+    else { r.notes = `${r.notes} [Admin fixed ${day}: was ${progNote}Lv ${r.fromLevel}→${r.toLevel}, ${r.exp} XP]`.trim(); r.exp = value; }
+    r.fromLevel += delta; r.toLevel += delta; r.upgradeId = prog;
+    if (movePurchase && r.purchaseId && (delta !== 0 || prog !== oldProg)) {
       for (const x of [...o.prices, ...o.exp]) {
-        if (x.id === id || x.purchaseId !== r.purchaseId || x.upgradeId !== r.upgradeId || x.fromLevel + delta < 0) continue;
-        x.notes = `${x.notes} [Admin moved ${day}: was Lv ${x.fromLevel}→${x.toLevel}]`.trim();
-        x.fromLevel += delta; x.toLevel += delta;
+        if (x.id === id || x.purchaseId !== r.purchaseId || x.upgradeId !== oldProg || x.fromLevel + delta < 0) continue;
+        x.notes = `${x.notes} [Admin moved ${day}: was ${progNote}Lv ${x.fromLevel}→${x.toLevel}]`.trim();
+        x.fromLevel += delta; x.toLevel += delta; x.upgradeId = prog;
       }
     }
     write(K.obs, o);

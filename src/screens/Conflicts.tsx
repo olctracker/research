@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { ConflictGroup, resolution } from "../domain/conflicts";
+import { explain, explainText } from "../domain/explain";
+import { ReportsSheet, ReportTarget } from "../ui/ReportsSheet";
+import { getEntry } from "../domain/catalog";
 import type { ExpObservation, LevelRequirementObservation, PriceObservation } from "../domain/types";
 import { useApp } from "../state";
 import { Card, fmt, Notice } from "../ui/components";
@@ -12,6 +15,10 @@ export default function Conflicts() {
   const { conflicts, isAdmin, repo, reloadObservations } = useApp();
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
+  const [open, setOpen] = useState<ReportTarget | null>(null);
+  const targetFor = (g: ConflictGroup, r: Row): ReportTarget =>
+    "expRequired" in r ? { title: `XP to reach LVL ${r.level + 1}`, type: "level_req", level: r.level }
+    : { title: `${getEntry(r.upgradeId).name} · ${g.subtitle}`, type: g.type, upgradeId: r.upgradeId, method: r.method, level: r.toLevel };
 
   async function choose(g: ConflictGroup, value: number) {
     const others = g.options.filter((o) => o.value !== value).map((o) => fmt(o.value)).join(", ");
@@ -44,13 +51,18 @@ export default function Conflicts() {
           <Card key={g.key} title={<>{g.title} <span className="muted">· {g.subtitle}</span></>}>
             {g.challengesConfirmed && <Notice tone="warn">A newer report disagrees with the confirmed value.</Notice>}
             <ul className="options">
-              {g.options.map((o) => (
+              {g.options.map((o) => {
+                const ex = explain(o.rows[0]);
+                const t = explainText(ex);
+                return (
                 <li key={o.value} className={`option${o.confirmed ? " confirmed" : ""}`}>
                   <div className="option-head">
                     <span className="option-value mono">{fmt(o.value)}</span>
                     <span className="option-count">{o.rows.length} of {total} report{total === 1 ? "" : "s"}</span>
                     {o.confirmed && <span className="badge rel-confirmed">Confirmed</span>}
                   </div>
+                  {t && <div className={`formula-check ${ex.matches ? "good-text" : "bad-text"}`}>{ex.matches ? "✓" : "✗"} {t}</div>}
+                  {ex.lookalike && <div className="lookalike">This number is exactly {ex.lookalike}</div>}
                   <ul className="reporters">
                     {o.rows.map((r) => (
                       <li key={r.id}>
@@ -61,6 +73,7 @@ export default function Conflicts() {
                         {"keygenLevel" in r && r.keygenLevel !== null && <span className="chip">Keygen {r.keygenLevel}</span>}
                         {r.reboots != null && <span className="chip">R{r.reboots}</span>}
                         {r.notes && <div className="hint">“{r.notes}”</div>}
+                        {isAdmin && <button className="link small" onClick={() => setOpen(targetFor(g, r))}>Fix this report</button>}
                       </li>
                     ))}
                   </ul>
@@ -70,11 +83,13 @@ export default function Conflicts() {
                     </button>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </Card>
         );
       })}
+      {open && <ReportsSheet target={open} onClose={() => setOpen(null)} />}
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { CATALOG, getEntry } from "../domain/catalog";
 import { useEffect, useMemo, useState } from "react";
 import type { ObservationType } from "../data/repository";
 import type { ExpObservation, LevelRequirementObservation, Method, PriceObservation } from "../domain/types";
@@ -95,11 +96,12 @@ export function ReportsSheet({ target, onClose }: { target: ReportTarget; onClos
 
                   {editing === r.o.id ? (
                     <EditForm row={r} busy={busy} onCancel={() => setEditing(null)}
-                      onSave={(lvl, val, move) => run(() => repo.editObservation(r.type, r.o.id, lvl, val, move),
-                        lvl !== toLevelOf(r) ? `Moved to ${r.type === "level_req" ? "LVL" : "level"} ${lvl}.` : "Value corrected.")} />
+                      onSave={(lvl, val, move, prog) => run(() => repo.editObservation(r.type, r.o.id, lvl, val, move, prog),
+                        prog && r.type !== "level_req" && prog !== r.o.upgradeId ? `Moved to ${getEntry(prog).name}. It now shows under that program.`
+                        : lvl !== toLevelOf(r) ? `Moved to ${r.type === "level_req" ? "LVL" : "level"} ${lvl}.` : "Value corrected.")} />
                   ) : (
                     <div className="report-actions">
-                      {isAdmin && <button className="btn sm" disabled={busy} onClick={() => { setEditing(r.o.id); setMsg(null); }}>Fix level / value</button>}
+                      {isAdmin && <button className="btn sm" disabled={busy} onClick={() => { setEditing(r.o.id); setMsg(null); }}>Fix</button>}
                       {isAdmin && !rejected && <button className="btn sm danger" disabled={busy} onClick={() => setStatus(r, "rejected")}>Reject</button>}
                       {isAdmin && rejected && <button className="btn sm ghost" disabled={busy} onClick={() => setStatus(r, "observed")}>Restore</button>}
                       {!isAdmin && mine && r.o.status === "observed" && <button className="btn sm danger" disabled={busy} onClick={() => withdraw(r)}>Remove my report</button>}
@@ -122,8 +124,10 @@ export function ReportsSheet({ target, onClose }: { target: ReportTarget; onClos
 }
 
 function EditForm({ row, busy, onSave, onCancel }: {
-  row: Row; busy: boolean; onSave: (level: number, value: number, movePurchase: boolean) => void; onCancel: () => void;
+  row: Row; busy: boolean; onSave: (level: number, value: number, movePurchase: boolean, upgradeId?: string) => void; onCancel: () => void;
 }) {
+  const [prog, setProg] = useState(row.type === "level_req" ? "" : row.o.upgradeId);
+  const progs = row.type === "level_req" ? [] : CATALOG.filter((e) => e.kind === getEntry(row.o.upgradeId).kind && (row.o.method === "download" ? e.download : e.store));
   const [level, setLevel] = useState(String(toLevelOf(row)));
   const [value, setValue] = useState(String(valueOf(row)));
   const hasPurchase = row.type !== "level_req" && !!row.o.purchaseId;
@@ -136,6 +140,13 @@ function EditForm({ row, busy, onSave, onCancel }: {
 
   return (
     <div className="edit-form">
+      {progs.length > 1 && (
+        <label className="field">Program
+          <select className="input" value={prog} onChange={(e) => setProg(e.target.value)}>
+            {progs.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+        </label>
+      )}
       <div className="grid2">
         <label className="field">{row.type === "level_req" ? "Shown at LVL (reaches the next one)" : "Level (the level it took you to)"}
           <input className="input mono" inputMode="numeric" value={level} onChange={(e) => setLevel(e.target.value)} />
@@ -147,10 +158,10 @@ function EditForm({ row, busy, onSave, onCancel }: {
       {row.type !== "level_req" && lvl !== null && lvl >= 1 && <p className="hint">Will be saved as Lv {lvl - jump}→{lvl}.</p>}
       {hasPurchase && (
         <label className="switch"><input type="checkbox" checked={move} onChange={(e) => setMove(e.target.checked)} />
-          <span>Also move the {row.type === "price" ? "XP" : "price"} from the same purchase</span></label>
+          <span>Also fix the {row.type === "price" ? "XP" : "price"} from the same purchase</span></label>
       )}
       <div className="report-actions">
-        <button className="btn sm primary" disabled={!ok || busy} onClick={() => ok && onSave(lvl!, val!, move)}>Save fix</button>
+        <button className="btn sm primary" disabled={!ok || busy} onClick={() => ok && onSave(lvl!, val!, move, prog || undefined)}>Save fix</button>
         <button className="btn sm ghost" disabled={busy} onClick={onCancel}>Cancel</button>
       </div>
     </div>

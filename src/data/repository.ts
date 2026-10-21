@@ -67,9 +67,10 @@ export interface Repository {
   resolveFlag(id: string): Promise<void>;
   /**
    * Moves a report to the right destination level and/or corrects its value. The old values are kept in its notes.
-   * movePurchase: the purchase's other reports for the same software move by the same number of levels.
+   * movePurchase: the purchase's other reports for the same software move by the same number of levels (and to the new program).
+   * upgradeId: move the report to a different program (wrong program picked).
    */
-  editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean): Promise<void>;
+  editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean, upgradeId?: string): Promise<void>;
   listPlayers(): Promise<PlayerSummary[]>;
   resetPin(userId: string, pin: string): Promise<void>;
   setApproved(userId: string, approved: boolean): Promise<void>;

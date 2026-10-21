@@ -207,4 +207,23 @@ do $$ begin
   if (select notes from public.price_observations where cost = 654321) not like '%was Lv 10→11%' then raise exception 'FAILED: old values not kept in notes'; end if;
 end $$;
 
+-- ---------- wrong program picked: move a report (and its purchase's XP) to another program ----------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+insert into public.price_observations (upgrade_id, method, from_level, to_level, cost, cost_type, keygen_level, purchase_id)
+  values ('password_encryptor','download',7,8,2464,'combined',10,'bbbbbbbb-0000-0000-0000-000000000002');
+insert into public.exp_observations (upgrade_id, method, from_level, to_level, exp, exp_basis, source, purchase_id)
+  values ('password_encryptor','download',7,8,999,'per_transaction','inferred','bbbbbbbb-0000-0000-0000-000000000002');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+select public.admin_edit_observation('price', (select id from public.price_observations where cost = 2464), 8, 2464, true, 'password_cracker');
+select pg_temp.expect_error($$select public.admin_edit_observation('price', (select id from public.price_observations where cost = 2464), 8, 2464, false, 'device')$$, 'move a Keygen price to Device (not downloadable)');
+reset role;
+do $$ begin
+  if (select upgrade_id from public.price_observations where cost = 2464) <> 'password_cracker' then raise exception 'FAILED: program not changed'; end if;
+  if (select upgrade_id from public.exp_observations where exp = 999) <> 'password_cracker' then raise exception 'FAILED: purchase XP did not follow'; end if;
+  if (select notes from public.price_observations where cost = 2464) not like '%was password_encryptor Lv 7→8%' then raise exception 'FAILED: old program not noted'; end if;
+end $$;
+
 select 'ALL RLS TESTS PASSED' as result;

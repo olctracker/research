@@ -14,7 +14,7 @@ A phone-friendly web app for recording Hack EX2 upgrade purchases, working out t
 - **History**
 - **Data Table:** pick a program (or Character levels) to see every level's store and Keygen price and XP, so you know exactly what's missing. Character rows show the XP needed to **reach** that level (LVL 2 = 589).
 - **Formula Checklist:** each formula, how well the data matches it (live counts), and the tests still needed to make it 100% (for example "a key that jumps 1 level", any program). Items tick themselves off from the crew's data and show ✓ match or ✗ mismatch.
-- **Coverage & Conflicts**
+- **Coverage & Conflicts:** each conflicting value says whether it matches the formula and, if not, what it matches exactly ("a Password Cracker key from 7 → 8 — wrong program picked?"). **Fix this report** moves it to the right program or level.
 - **Settings**
 
 ---
@@ -42,7 +42,7 @@ Without Supabase settings the app runs in **test mode**: accounts and data are s
 
 1. Go to [supabase.com](https://supabase.com) and create a **new project**. Pick any name and save the database password somewhere safe.
 2. Open **SQL Editor → New query**. Paste all of `supabase/setup.sql` and click **Run**. It is `0001_schema.sql` + `0002_seed.sql` in one file and is safe to run again.
-   - Already ran an older `setup.sql`? Run only the upgrade files you haven't run yet, in order: `0003_admin_tools_upgrade.sql` (account approval), `0004_fix_reports.sql` (fixing wrong reports). Each is short and safe to repeat.
+   - Already ran an older `setup.sql`? Run only the upgrade files you haven't run yet, in order: `0003_admin_tools_upgrade.sql` (account approval), `0004_fix_reports.sql` (fixing wrong reports), `0005_fix_program.sql` (moving a report to the right program). Each is short and safe to repeat.
 3. (Nothing else to run — the starting data is included.)
 4. Set up PIN accounts. Go to **Authentication → Sign In / Providers → Email** and set:
    - **Enable Email provider**: on

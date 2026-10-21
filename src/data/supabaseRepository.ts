@@ -238,8 +238,10 @@ export class SupabaseRepository implements Repository {
     check(await this.sb.rpc("withdraw_observation", { p_type: type, p_id: id }));
   }
 
-  async editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean) {
-    check(await this.sb.rpc("admin_edit_observation", { p_type: type, p_id: id, p_to_level: toLevel, p_value: value, p_move_purchase: movePurchase }));
+  async editObservation(type: ObservationType, id: string, toLevel: number, value: number, movePurchase: boolean, upgradeId?: string) {
+    check(await this.sb.rpc("admin_edit_observation", {
+      p_type: type, p_id: id, p_to_level: toLevel, p_value: value, p_move_purchase: movePurchase, p_upgrade_id: upgradeId ?? null
+    }));
   }
 
   async resolveFlag(id: string) {
