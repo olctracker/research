@@ -1,7 +1,40 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { FORMULA_SHEET } from "../domain/formulaSheet";
 import { buildChecklist, failed, isDone } from "../domain/checklist";
 import { useApp } from "../state";
 import { Card } from "../ui/components";
+
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    // Older phones: copy through a hidden text box.
+    try {
+      const t = document.createElement("textarea");
+      t.value = text; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select(); t.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy"); document.body.removeChild(t); return ok;
+    } catch { return false; }
+  }
+}
+
+function FormulaSheet() {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const [open, setOpen] = useState(false);
+  async function copy() {
+    const ok = await copyText(FORMULA_SHEET);
+    setState(ok ? "copied" : "failed");
+    if (ok) setTimeout(() => setState("idle"), 2500);
+  }
+  return (
+    <Card title="Formula Sheet">
+      <p className="hint">Every verified formula in one simple list, ready to share.</p>
+      <button className="btn primary full" onClick={copy}>{state === "copied" ? "Copied ✓" : "Copy all formulas"}</button>
+      {state === "failed" && <p className="hint bad-text">Your browser blocked copying. Open the sheet below, press and hold the text, and choose Select all → Copy.</p>}
+      <button className="link" onClick={() => setOpen((o) => !o)}>{open ? "Hide the sheet" : "Show the sheet"}</button>
+      {open && <pre className="formula-sheet">{FORMULA_SHEET}</pre>}
+    </Card>
+  );
+}
 
 export default function Formulas() {
   const { observations, kb } = useApp();
@@ -14,6 +47,8 @@ export default function Formulas() {
     <div className="screen">
       <h1>Formula Checklist</h1>
       <p className="lead">What we still need to test before each formula is 100%. Items tick themselves off when someone records matching data, and show whether the game agreed with the formula.</p>
+
+      <FormulaSheet />
 
       <div className={`summary-bar${broken ? " warn" : done === all.length ? " good" : ""}`}>
         <span className="summary-count mono">{done}/{all.length}</span>
