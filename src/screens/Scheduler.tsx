@@ -21,7 +21,7 @@ function OptionButton({ on, title, cost, xp, extra, warn, onClick }: {
   );
 }
 
-export default function Calculator() {
+export default function Scheduler() {
   const { player, kb } = useApp();
   const levels = player?.levels ?? {};
   const cur = (id: string) => levels[id] ?? getEntry(id).startLevel;
@@ -50,7 +50,7 @@ export default function Calculator() {
 
   return (
     <div className="screen">
-      <h1>Calculator</h1>
+      <h1>Scheduler</h1>
       <p className="lead">Pick the levels you want. See what it costs, the XP you'd get, and the level you'd end up at. Prices and XP come from crew reports and the verified formulas.</p>
 
       <div className="calc-summary">

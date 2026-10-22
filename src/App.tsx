@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { needsEntry, nextPriceRows } from "./domain/nextPrices";
 import Dashboard from "./screens/Dashboard";
-import Calculator from "./screens/Calculator";
+import Scheduler from "./screens/Scheduler";
 import DataTable from "./screens/DataTable";
 import DeviceInput from "./screens/DeviceInput";
 import Formulas from "./screens/Formulas";
@@ -25,7 +25,7 @@ const ICONS = {
   store: "M4 7h16l-1.5 12h-13zM8 7V5a4 4 0 018 0v2",
   keygen: "M15 7a4 4 0 11-3.9 4.9L4 19v-3l1-1h2v-2h2l2.1-2.1A4 4 0 0115 7zM16 9h.01",
   buy: "M12 8v8M8 12h8M12 21a9 9 0 100-18 9 9 0 000 18z",
-  calc: "M6 3h12v18H6zM9 7h6M9 11h1M12 11h1M15 11h0M9 15h1M12 15h1M15 15v3",
+  scheduler: "M6 3h12v18H6zM9 7h6M9 11h1M12 11h1M15 11h0M9 15h1M12 15h1M15 15v3",
   history: "M12 7v5l3 2M21 12a9 9 0 11-9-9 9 9 0 019 9z",
   research: "M4 20V11M10 20V5M16 20v-6M21 20H3",
   data: "M4 5h16v14H4zM4 10h16M4 15h16M10 5v14",
@@ -53,7 +53,7 @@ function useNav(): NavSection[] {
       {
         title: "Tracking", items: [
           { route: "buy", label: "Purchase", icon: ICONS.buy },
-          { route: "calc", label: "Calculator", icon: ICONS.calc },
+          { route: "scheduler", label: "Scheduler", icon: ICONS.scheduler },
           { route: "history", label: "History", icon: ICONS.history }
         ]
       },
@@ -146,7 +146,7 @@ export default function App() {
       {route === "store" && <Prices method="store" />}
       {route === "keygen" && <Prices method="download" />}
       {route === "buy" && <Purchase />}
-      {route === "calc" && <Calculator />}
+      {route === "scheduler" && <Scheduler />}
       {route === "history" && <History />}
       {route === "data" && <DataTable />}
       {route === "formulas" && <Formulas />}
