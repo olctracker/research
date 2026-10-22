@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { newId } from "../data/repository";
 import { CATALOG, CATEGORY_LABEL, getEntry, methodsFor, levelName } from "../domain/catalog";
 import { addXp, inferExpGained } from "../domain/exp";
+import { formulaKeyPrice } from "../domain/formulas";
 import { isVerified, methodLabel } from "../domain/knowledge";
 import { missingKey, planPurchase } from "../domain/purchase";
 import { buildRecord, RecordResult } from "../domain/record";
 import type { CharacterState, Category, Method, PlayerState, PriceObservation } from "../domain/types";
 import { useApp } from "../state";
 import { CharacterForm, CharDraft, draftFrom, parseDraft } from "../ui/CharacterForm";
-import { Card, fmt, Notice, parseWhole, RelBadge, Segmented } from "../ui/components";
+import { Card, fmt, Notice, parseWhole, RelBadge, Segmented, Stepper } from "../ui/components";
 import { go } from "../ui/router";
 
 type Phase = "form" | "after" | "need_req" | "done";
@@ -32,10 +33,12 @@ export default function Purchase() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
+  /** Keygen keys can jump several levels at once. 0 = just the next level. */
+  const [jumpTo, setJumpTo] = useState(0);
 
   const entry = upgradeId ? getEntry(upgradeId) : null;
   const current = entry ? player.levels[entry.id] ?? entry.startLevel : 0;
-  const next = entry?.kind === "one_time" ? 1 : current + 1;
+  const next = entry?.kind === "one_time" ? 1 : method === "download" && jumpTo > current + 1 ? jumpTo : current + 1;
   const keygen = player.levels.keygen ?? 0;
 
   const plan = useMemo(() => entry
@@ -44,6 +47,7 @@ export default function Purchase() {
   const line = plan?.lines[0] ?? null;
   const known = line?.cost.value ?? null;
   const xpKnown = plan?.totalExp ?? null;
+  const multiJump = method === "download" && next - current > 1;
 
   const price = parseWhole(priceText);
   const b = parseDraft(before);
@@ -54,6 +58,7 @@ export default function Purchase() {
     const e = id ? getEntry(id) : null;
     const meth: Method = e && !methodsFor(e).includes(m) ? "store" : m;
     setMethod(meth);
+    setJumpTo(0);
     setErr(null);
     if (e) {
       const cur = player.levels[e.id] ?? e.startLevel;
@@ -63,7 +68,7 @@ export default function Purchase() {
   }
 
   function reset() {
-    setPhase("form"); setDone(null); setErr(null); setUpgradeId(""); setPriceText("");
+    setPhase("form"); setDone(null); setErr(null); setUpgradeId(""); setPriceText(""); setJumpTo(0);
     setBefore(draftFrom(app.player!.character)); setPending(null); setNewReq("");
   }
 
@@ -204,10 +209,16 @@ export default function Purchase() {
       <div className="screen">
         <button className="link" onClick={() => setPhase("form")}>‹ Back</button>
         <h1>Your stats now</h1>
-        <p className="lead">Nobody knows how much XP {entry.name} {levelName(entry.id, next)} gives yet. Enter what your game home screen shows <b>after buying</b> and the app works it out.</p>
+        <p className="lead">{multiJump ? <>Nobody knows yet how much XP a key jump from {current} → {next} gives.</> : <>Nobody knows how much XP {entry.name} {levelName(entry.id, next)} gives yet.</>} Enter what your game home screen shows <b>after buying</b> and the app works it out.</p>
         <Card>
           <div className="hint">Before: <span className="mono">{stateText(b.state)}</span></div>
           {(() => {
+            if (multiJump) {
+              const land = app.kb.storeLevelExp(entry.id, next).predicted ?? null;
+              let every: number | null = 0;
+              for (let l = current + 1; l <= next; l++) { const v = app.kb.storeLevelExp(entry.id, l).predicted; every = v == null || every === null ? null : every + v; }
+              return <div className="hint">This tests big-jump XP: <b className="mono">+{fmt(land)}</b> if only the landing level counts, <b className="mono">+{fmt(every)}</b> if every level counts.</div>;
+            }
             const pr = method === "store" ? app.kb.storeLevelExp(entry.id, next).predicted ?? null : null;
             return pr !== null ? <div className="hint">The formula expects <b className="mono">+{fmt(pr)} XP</b>. Enter what the game shows to check it.</div> : null;
           })()}
@@ -261,13 +272,22 @@ export default function Purchase() {
           ]} />
         )}
         {entry && !entry.download && <div className="hint">{entry.name} is only sold in the store.</div>}
-        {entry && method === "download" && <div className="hint">Your Keygen is Lv {keygen}.</div>}
+        {entry && method === "download" && entry.kind !== "one_time" && (
+          <div className="row jump-row">
+            <div className="grow">
+              <div className="row-title">Key goes to level</div>
+              <div className="hint">Your {entry.name} is Lv {current}. Pick the level of the key you downloaded. Your Keygen is Lv {keygen}.</div>
+            </div>
+            <Stepper label="Key goes to level" value={next} min={current + 1} max={entry.maxLevel ?? keygen}
+              onChange={(v) => { setJumpTo(v); setPriceText(""); }} />
+          </div>
+        )}
       </Card>
 
       {plan?.errors.map((e) => <Notice key={e} tone="bad">{e}</Notice>)}
 
       {entry && plan && plan.errors.length === 0 && (
-        <Card title={`2 · Price for ${entry.kind === "one_time" ? entry.name : levelName(entry.id, next)}`}>
+        <Card title={`2 · Price for ${entry.kind === "one_time" ? entry.name : method === "download" ? `key ${current} → ${next}` : levelName(entry.id, next)}`}>
           <input className="input mono big-input" inputMode="numeric" pattern="[0-9]*" aria-label="Price"
             value={priceText} onChange={(e) => setPriceText(e.target.value.replace(/[^\d]/g, ""))}
             placeholder="Price shown in game" />
@@ -281,6 +301,10 @@ export default function Purchase() {
             <div className="hint">Not in the database yet. Enter the price the {method === "store" ? "store" : "Keygen"} shows.</div>
           )}
           {entry.defensiveDiscount && method === "store" && <div className="hint">Enter the discounted price the store shows.</div>}
+          {method === "download" && known === null && (() => {
+            const f = formulaKeyPrice(entry.id, current, next);
+            return f !== null ? <div className="hint">The formula says this key costs <b className="mono">{fmt(f)}</b>.</div> : null;
+          })()}
         </Card>
       )}
 

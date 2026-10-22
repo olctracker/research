@@ -94,7 +94,15 @@ export function buildChecklist(obs: ObservationSet, kb: Knowledge): CheckGroup[]
       formula: "20% × (base × LVL^1.25 rounded up, × 0.85 for defensive rounded up), rounded down. A key gives the XP of the level it lands on. Device: 25% of its price. Network: 20%. Botnet: price ÷ 6 (likely).",
       items: [
         { id: "xp-high", title: "Software XP above level 30", how: "Any program, store or key. Checks the curve holds at high levels.", evidence: xpEv(softXp.filter((e) => e.toLevel > 30)) },
-        { id: "xp-keyjump", title: "XP from a key that jumps 2+ levels", how: "Any program. Does a bigger jump still give only the landing level's XP?", evidence: xpEv(xp.filter((e) => e.method === "download" && e.toLevel - e.fromLevel >= 2)) },
+        { id: "xp-keyjump", title: "XP from a key that jumps 2+ levels", how: "Any program. Does a bigger jump still give only the landing level's XP?", evidence: xp.filter((e) => e.method === "download" && e.toLevel - e.fromLevel >= 2).map((e) => {
+          const landing = predictedStoreXp(e.upgradeId, e.toLevel)?.value ?? null;
+          let every: number | null = 0;
+          for (let l = e.fromLevel + 1; l <= e.toLevel; l++) { const v = predictedStoreXp(e.upgradeId, l)?.value; every = v == null || every === null ? null : every + v; }
+          const text = `${name(e.upgradeId)} ${e.fromLevel}→${e.toLevel} (key): +${n(e.exp)} XP`;
+          if (e.exp === landing) return { text, match: true, note: "landing level only" };
+          if (e.exp === every) return { text, match: true, note: "every level it skipped counts" };
+          return { text, match: false, note: `landing only would be ${landing === null ? "?" : n(landing)}, every level ${every === null ? "?" : n(every)}` };
+        }) },
         { id: "xp-botnet", title: "XP for a third Botnet tier", how: "Botnet looks like price ÷ 6 from 2 tiers. One more confirms it.", evidence: (() => { const b = xpEv(storeXp.filter((e) => e.upgradeId === "botnet")); return b.length >= 3 ? b : []; })() },
         // One-time items each get their own test: no shared formula is assumed.
         { id: "xp-notepad", title: "XP for Notepad", how: "Buy Notepad and enter your stats after. Its XP is recorded on its own.", evidence: xpEv(storeXp.filter((e) => e.upgradeId === "notepad")) },

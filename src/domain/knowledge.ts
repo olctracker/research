@@ -82,6 +82,7 @@ export class Knowledge {
   private perLevelExp: Map<string, ExpObservation[]>;
   private txnExp: Map<string, ExpObservation[]>;
   private reqs: Map<string, LevelRequirementObservation[]>;
+  private jumpExp: Map<string, ExpObservation[]>;
 
   constructor(readonly obs: ObservationSet) {
     const finals = obs.prices.filter((p) => p.priceBasis === "final");
@@ -91,7 +92,9 @@ export class Knowledge {
     this.oneTimePrice = group(finals, (p) => (p.costType === "one_time" ? p.upgradeId : null));
     this.perLevelExp = group(obs.exp, (e) => (e.expBasis === "per_level" && e.method === "store" ? key(e.upgradeId, e.toLevel) : null));
     // Download XP depends on the destination level only (known mechanic), so key by destination.
-    this.txnExp = group(obs.exp, (e) => (e.method === "download" ? key(e.upgradeId, e.toLevel) : null));
+    // One-level keys give the landing level's XP. Bigger jumps are kept apart until we know how they work.
+    this.txnExp = group(obs.exp, (e) => (e.method === "download" && e.toLevel - e.fromLevel === 1 ? key(e.upgradeId, e.toLevel) : null));
+    this.jumpExp = group(obs.exp, (e) => (e.method === "download" && e.toLevel - e.fromLevel > 1 ? key(e.upgradeId, e.fromLevel, e.toLevel) : null));
     this.reqs = group(obs.levelReqs, (r) => String(r.level));
   }
 
@@ -118,6 +121,10 @@ export class Knowledge {
     // A key gives the XP of the level it lands on (verified on 55 one-level keys).
     const p = predictedStoreXp(upgradeId, toLevel);
     return p ? { ...l, predicted: p.value, predictedStatus: p.status } : l;
+  }
+  /** XP reported for a key that jumped 2+ levels (from → to). No formula yet: this is what's being tested. */
+  downloadJumpExp(upgradeId: string, fromLevel: number, toLevel: number): Lookup {
+    return consensus((this.jumpExp.get(key(upgradeId, fromLevel, toLevel)) ?? []).map(fromExp));
   }
   oneTimeItemPrice(upgradeId: string): Lookup {
     return consensus((this.oneTimePrice.get(upgradeId) ?? []).map(fromPrice));

@@ -126,7 +126,8 @@ export function planPurchase(input: PlanInput): PurchasePlan {
       plan.warnings.push("Keygen cost is estimated by adding per-level cost components. Record the real total to confirm.");
     }
   }
-  const exp = kb.downloadExp(entry.id, toLevel);
+  // A one-level key gives the landing level's XP. For bigger jumps, only use XP someone actually recorded.
+  const exp = toLevel - fromLevel === 1 ? kb.downloadExp(entry.id, toLevel) : kb.downloadJumpExp(entry.id, fromLevel, toLevel);
   plan.lines.push({ fromLevel, toLevel, cost, exp, costSource });
   if (cost.value === null) plan.missing.push({ kind: "download_price", upgradeId: entry.id, fromLevel, toLevel, label: `${entry.name} download cost ${fromLevel} → ${toLevel}`, reason: missingFrom(cost) });
   if (exp.value === null) plan.missing.push({ kind: "download_exp", upgradeId: entry.id, fromLevel, toLevel, label: `${entry.name} download XP at level ${toLevel}`, reason: missingFrom(exp) });

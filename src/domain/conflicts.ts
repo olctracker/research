@@ -38,6 +38,7 @@ const priceKey = (p: PriceObservation): [string, string, string] | null => {
 const expKey = (x: ExpObservation): [string, string, string] => {
   const e = getEntry(x.upgradeId);
   if (e.kind === "one_time") return [`x1|${x.upgradeId}`, e.name, "XP reward"];
+  if (x.method === "download" && x.toLevel - x.fromLevel > 1) return [`xj|${x.upgradeId}|${x.fromLevel}|${x.toLevel}`, e.name, `Keygen XP · jump ${x.fromLevel} → ${x.toLevel}`];
   if (x.method === "download") return [`xd|${x.upgradeId}|${x.toLevel}`, e.name, `Keygen XP · level ${x.toLevel}`];
   if (x.expBasis === "per_transaction") return [`xt|${x.upgradeId}|${x.fromLevel}|${x.toLevel}`, e.name, `Store XP · levels ${x.fromLevel + 1}–${x.toLevel} combined`];
   return [`xs|${x.upgradeId}|${x.toLevel}`, e.name, `Store XP · level ${x.toLevel}`];

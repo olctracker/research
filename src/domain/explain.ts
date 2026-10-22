@@ -63,6 +63,7 @@ export function explain(r: Row): Explanation {
     return { matches: null, formula: null, lookalike: null };
   }
   // XP (store per level, or a key: same XP as the level it lands on)
+  if (r.method === "download" && r.toLevel - r.fromLevel > 1) return { matches: null, formula: null, lookalike: null };
   if ((r.method === "store" && r.expBasis === "per_level") || r.method === "download") {
     const p = predictedStoreXp(r.upgradeId, r.toLevel);
     let lookalike: string | null = null;
