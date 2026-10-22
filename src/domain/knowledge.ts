@@ -92,7 +92,8 @@ export class Knowledge {
     this.oneTimePrice = group(finals, (p) => (p.costType === "one_time" ? p.upgradeId : null));
     this.perLevelExp = group(obs.exp, (e) => (e.expBasis === "per_level" && e.method === "store" ? key(e.upgradeId, e.toLevel) : null));
     // Download XP depends on the destination level only (known mechanic), so key by destination.
-    // One-level keys give the landing level's XP. Bigger jumps are kept apart until we know how they work.
+    // Any key gives the landing level's XP (confirmed for 1- and 2-level jumps). Big-jump reports are kept apart
+    // so they can keep being checked against that rule.
     this.txnExp = group(obs.exp, (e) => (e.method === "download" && e.toLevel - e.fromLevel === 1 ? key(e.upgradeId, e.toLevel) : null));
     this.jumpExp = group(obs.exp, (e) => (e.method === "download" && e.toLevel - e.fromLevel > 1 ? key(e.upgradeId, e.fromLevel, e.toLevel) : null));
     this.reqs = group(obs.levelReqs, (r) => String(r.level));

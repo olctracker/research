@@ -124,7 +124,7 @@ npm run build                # type-checks and builds into dist/
 ## How the numbers work
 
 - **Store:** one level at a time. Total cost and EXP are the sums of each level's observed values.
-- **Keygen (download):** a key can jump any number of levels (Purchase → Keygen → "Key goes to level"). XP for jumps of 2+ levels is never guessed: you enter your stats after, and it's stored separately from one-level key XP until the rule is confirmed.
+- **Keygen (download):** a key can jump any number of levels (Purchase → Keygen → "Key goes to level"). A key only gives the XP of the level it lands on, however far it jumps (confirmed). Big-jump XP is still measured from your stats after buying and kept separately, so it keeps being checked.
 - **Download data model:** one transaction. Cost is the observed combined total. If only per-level download *components* are known, their sum is shown, clearly labelled as an estimate. EXP counts the destination level only.
 - **Keygen:** a download to level N needs Keygen N or higher (working rule, still being verified).
 - **Defensive discount (15%):** applies to Firewall, Password Encryptor, Antivirus, Proxy and Trace store purchases. Prices are stored as the final amount charged, and the rounding rule is still being researched.

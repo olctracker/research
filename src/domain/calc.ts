@@ -23,7 +23,7 @@ export interface PlanRow {
   to: number;
   store: Option;
   /** null when this can't be downloaded (hardware, Keygen itself, one-time items) */
-  key: (Option & { keygenNeeded: number; keyXpUntested: boolean }) | null;
+  key: (Option & { keygenNeeded: number; /** 2+ level jump: only the landing level's XP (confirmed) */ keyXpUntested: boolean }) | null;
   /** One single-level key per level (from→from+1, …). Same XP as the store. null when it can't be downloaded. */
   singleKeys: Option | null;
 }

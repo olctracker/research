@@ -188,7 +188,7 @@ export default function Calculator() {
             {endB && <span className="hint mono">{bigJumpXp.partial ? "≥ " : ""}+{fmt(bigJumpXp.t)} XP · {fmt(endB.exp)} / {fmt(endB.required)}</span>}
           </div>
         </div>
-        <p className="hint">The store and single-level keys give the same XP, so they share a result. "Key big jumps" assumes a jump only gives the XP of the level it lands on (still being tested).</p>
+        <p className="hint">The store and single-level keys give the same XP, so they share a result. A key that jumps several levels only gives the XP of the level it lands on (confirmed: Password Cracker 2 → 4 gave +1,244, the Lv 4 XP).</p>
       </section>
 
       {(used.length > 0 || lvl || xp) && (

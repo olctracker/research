@@ -8,6 +8,7 @@
 // Upgrade XP for reaching level L (store, and Keygen keys land on the same XP):
 //   floor(0.2 × ceil(ceil(base × L^1.25) × 0.85 for defensive))  — the store-price recipe with L^1.25.
 //   Verified on 70 of 70 reports (16 store + 55 one-level keys, 11 programs, R2 and R3).
+//   A key that jumps several levels gives only the landing level's XP (Password Cracker 2 → 4 = +1,244 = Lv 4 XP).
 // Hardware XP: Device = 25% of its price (4 of 4), Network = 20% (10 of 10), Botnet ≈ price ÷ 6 (2 points, likely).
 
 export type FormulaStatus = "verified" | "likely";

@@ -129,7 +129,7 @@ export default function Scheduler() {
                         cost={r.store.cost} xp={r.store.xp} onClick={() => setChoice((ch) => ({ ...ch, [e.id]: "store" }))} />
                       {r.key && (
                         <OptionButton on={pick === "key"} title={`Key · ${from} → ${to}`} cost={r.key.cost} xp={r.key.xp}
-                          extra={`Needs Keygen ${r.key.keygenNeeded}${r.key.keyXpUntested ? " · XP for 2+ level jumps not confirmed yet" : ""}`}
+                          extra={`Needs Keygen ${r.key.keygenNeeded}${r.key.keyXpUntested ? " · XP for the landing level only" : ""}`}
                           warn={keygenAfter < r.key.keygenNeeded ? `Your Keygen would be ${keygenAfter}` : undefined}
                           onClick={() => setChoice((ch) => ({ ...ch, [e.id]: "key" }))} />
                       )}
