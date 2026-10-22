@@ -470,3 +470,9 @@ td.c-off { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transp
 .big-num { font-size: 1.3rem !important; }
 .calc2-single { padding: 0 2px; }
 .calc2-wide { border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.calc2-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.calc2-three .calc2-cost { padding: 8px; }
+.calc2-three .calc2-cost > span:first-child { font-size: 0.66rem; letter-spacing: 0.02em; }
+.calc2-three .calc2-cost b { font-size: 0.98rem; overflow-wrap: anywhere; }
+.calc2-three .calc2-cost .hint { font-size: 0.72rem; overflow-wrap: anywhere; }
+.calc2-three .big-num { font-size: 1.02rem !important; }

@@ -117,45 +117,49 @@ export default function Calculator() {
             </div>
           )}
           {error && <div className="bad-text small">{error}</div>}
-          {plan && (
-            <div className="calc2-pair">
-              <div className="calc2-cost">
-                <span>Store{e.kind === "one_time" ? "" : ` · ${plan.to - plan.from} level${plan.to - plan.from === 1 ? "" : "s"}`}</span>
-                <b className="mono">{plan.store.cost === null ? "?" : fmt(plan.store.cost)}</b>
-                <span className="hint mono">{plan.store.xp === null ? "XP ?" : `+${fmt(plan.store.xp)} XP`}</span>
+          {plan && (() => {
+            const n = plan.to - plan.from;
+            const noKey = e.id === "keygen" ? "Keygen can't be downloaded" : e.kind === "one_time" ? "Store only" : "Store only (hardware)";
+            return (
+              <div className="calc2-three">
+                <div className="calc2-cost">
+                  <span>Store</span>
+                  <b className="mono">{plan.store.cost === null ? "?" : fmt(plan.store.cost)}</b>
+                  <span className="hint mono">{plan.store.xp === null ? "XP ?" : `+${fmt(plan.store.xp)} XP`}</span>
+                </div>
+                <div className="calc2-cost">
+                  <span>1-level keys</span>
+                  {plan.singleKeys ? (
+                    <>
+                      <b className="mono">{plan.singleKeys.cost === null ? "?" : fmt(plan.singleKeys.cost)}</b>
+                      <span className="hint mono">{plan.singleKeys.xp === null ? "XP ?" : `+${fmt(plan.singleKeys.xp)} XP`} · {n} key{n === 1 ? "" : "s"}</span>
+                    </>
+                  ) : <span className="hint">{noKey}</span>}
+                </div>
+                <div className="calc2-cost">
+                  <span>Key big jump</span>
+                  {plan.key ? (
+                    <>
+                      <b className="mono">{plan.key.cost === null ? "?" : fmt(plan.key.cost)}</b>
+                      <span className="hint mono">{plan.key.xp === null ? "XP ?" : `+${fmt(plan.key.xp)} XP`} · {plan.from}→{plan.to}</span>
+                    </>
+                  ) : <span className="hint">{noKey}</span>}
+                </div>
               </div>
-              <div className="calc2-cost">
-                <span>Key · {plan.from} → {plan.to}</span>
-                {plan.key ? (
-                  <>
-                    <b className="mono">{plan.key.cost === null ? "?" : fmt(plan.key.cost)}</b>
-                    <span className="hint mono">{plan.key.xp === null ? "XP ?" : `+${fmt(plan.key.xp)} XP`} · Keygen {plan.key.keygenNeeded}+</span>
-                  </>
-                ) : <span className="hint">{e.id === "keygen" ? "Keygen can't be downloaded" : e.kind === "one_time" ? "Store only" : "Store only (hardware)"}</span>}
-              </div>
-            </div>
-          )}
-          {plan?.singleKeys && plan.to - plan.from >= 2 && (
-            <div className="hint calc2-single">
-              Keys one level at a time ({plan.to - plan.from} keys): <b className="mono">{plan.singleKeys.cost === null ? "?" : fmt(plan.singleKeys.cost)}</b> · same XP as the store
-            </div>
-          )}
+            );
+          })()}
+          {plan?.key && plan.to - plan.from >= 1 && <div className="hint">Keys need Keygen {plan.key.keygenNeeded}+{plan.to - plan.from === 1 ? " (1 level: both key options are the same key)" : ""}</div>}
         </section>
       ))}
 
       <section className="calc2-box calc2-total" aria-label="Totals">
         <div className="calc2-title">Total cost</div>
-        <div className="calc2-pair">
-          <div className="calc2-cost"><span>Store</span><b className="mono big-num">{storeCost.partial ? "≥ " : ""}{fmt(storeCost.t)}</b><span className="hint">one level at a time</span></div>
-          <div className="calc2-cost"><span>Keys · big jumps</span><b className="mono big-num">{keyCost.partial ? "≥ " : ""}{fmt(keyCost.t)}</b><span className="hint">one key per app</span></div>
+        <div className="calc2-three">
+          <div className="calc2-cost"><span>Store</span><b className="mono big-num">{storeCost.partial ? "≥ " : ""}{fmt(storeCost.t)}</b></div>
+          <div className="calc2-cost"><span>1-level keys</span><b className="mono big-num">{singleCost.partial ? "≥ " : ""}{fmt(singleCost.t)}</b></div>
+          <div className="calc2-cost"><span>Key big jumps</span><b className="mono big-num">{keyCost.partial ? "≥ " : ""}{fmt(keyCost.t)}</b></div>
         </div>
-        {anyKey && (
-          <div className="calc2-cost calc2-wide">
-            <span>Keys · one level at a time</span>
-            <b className="mono big-num">{singleCost.partial ? "≥ " : ""}{fmt(singleCost.t)}</b>
-            <span className="hint">Same XP as the store (left side of Ending level), for a fraction of the price.</span>
-          </div>
-        )}
+        <p className="hint">Store and 1-level keys give the same XP; big jumps give much less (see Ending level).</p>
         {anyKey && <p className="hint">Key totals use the store price for things that can't be downloaded. Keys need a Keygen level at least as high as the level they reach: up to {maxKeygen} here{keygenEnd !== null && keygenEnd >= maxKeygen ? " (your Keygen box covers it)" : ". Add Keygen above to include what raising it costs"}.</p>}
         {!used.length && <p className="hint">Enter a starting and ending level above to see totals.</p>}
       </section>
@@ -174,17 +178,17 @@ export default function Calculator() {
         {start && !startOk && <div className="bad-text small">XP must be less than {fmt(start.required)} at LVL {start.level}.</div>}
         <div className="calc2-pair">
           <div className="calc2-cost">
-            <span>One level at a time</span>
+            <span>Store or 1-level keys</span>
             <b className="mono big-num">{endA ? `LVL ${endA.level}` : "—"}</b>
             {endA && <span className="hint mono">{oneAtATimeXp.partial ? "≥ " : ""}+{fmt(oneAtATimeXp.t)} XP · {fmt(endA.exp)} / {fmt(endA.required)}</span>}
           </div>
           <div className="calc2-cost">
-            <span>Large key jumps</span>
+            <span>Key big jumps</span>
             <b className="mono big-num">{endB ? `LVL ${endB.level}` : "—"}</b>
             {endB && <span className="hint mono">{bigJumpXp.partial ? "≥ " : ""}+{fmt(bigJumpXp.t)} XP · {fmt(endB.exp)} / {fmt(endB.required)}</span>}
           </div>
         </div>
-        <p className="hint">"One level at a time" is the XP from the store or from single-level keys (they give the same). "Large key jumps" assumes a jump only gives the XP of the level it lands on (still being tested).</p>
+        <p className="hint">The store and single-level keys give the same XP, so they share a result. "Key big jumps" assumes a jump only gives the XP of the level it lands on (still being tested).</p>
       </section>
 
       {(used.length > 0 || lvl || xp) && (
