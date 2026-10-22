@@ -24,6 +24,8 @@ export interface PlanRow {
   store: Option;
   /** null when this can't be downloaded (hardware, Keygen itself, one-time items) */
   key: (Option & { keygenNeeded: number; keyXpUntested: boolean }) | null;
+  /** One single-level key per level (from→from+1, …). Same XP as the store. null when it can't be downloaded. */
+  singleKeys: Option | null;
 }
 
 /** Price of one store level: what players saw, otherwise the formula / hardware table. */
@@ -70,7 +72,17 @@ export function planRow(kb: Knowledge, upgradeId: string, from: number, to: numb
     if (kx === null) ku.push(`${e.name} key ${from}→${to} XP`);
     key = { cost: kc, xp: kx, unknown: ku, keygenNeeded: to, keyXpUntested: to - from >= 2 };
   }
-  return { upgradeId, from, to, store, key };
+  let singleKeys: Option | null = null;
+  if (e.download && to > from) {
+    let sc: number | null = 0;
+    const su: string[] = [];
+    for (let l = from + 1; l <= to; l++) {
+      const p = kb.downloadCombinedPrice(upgradeId, l - 1, l).value ?? formulaKeyPrice(upgradeId, l - 1, l);
+      if (p === null) { sc = null; su.push(`${e.name} key ${l - 1}→${l} price`); } else if (sc !== null) sc += p;
+    }
+    singleKeys = { cost: sc, xp: store.xp, unknown: su };
+  }
+  return { upgradeId, from, to, store, key, singleKeys };
 }
 
 export interface PlanTotals {

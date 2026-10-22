@@ -468,3 +468,5 @@ td.c-off { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transp
 .calc2-cost b { font-size: 1.1rem; }
 .calc2-total { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .big-num { font-size: 1.3rem !important; }
+.calc2-single { padding: 0 2px; }
+.calc2-wide { border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }

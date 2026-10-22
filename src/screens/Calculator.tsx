@@ -83,6 +83,9 @@ export default function Calculator() {
   };
   const storeCost = sum((p) => p.store.cost);
   const keyCost = sum((p) => (p.key ? p.key.cost : p.store.cost));
+  const singleCost = sum((p) => (p.singleKeys ? p.singleKeys.cost : p.store.cost));
+  const keygenRow = used.find((r) => r.e.id === "keygen");
+  const keygenEnd = keygenRow?.plan ? keygenRow.plan.to : null;
   const oneAtATimeXp = sum((p) => p.store.xp);
   const bigJumpXp = sum((p) => (p.key ? p.key.xp : p.store.xp));
   const anyKey = used.some((r) => r.plan!.key);
@@ -132,16 +135,28 @@ export default function Calculator() {
               </div>
             </div>
           )}
+          {plan?.singleKeys && plan.to - plan.from >= 2 && (
+            <div className="hint calc2-single">
+              Keys one level at a time ({plan.to - plan.from} keys): <b className="mono">{plan.singleKeys.cost === null ? "?" : fmt(plan.singleKeys.cost)}</b> · same XP as the store
+            </div>
+          )}
         </section>
       ))}
 
       <section className="calc2-box calc2-total" aria-label="Totals">
         <div className="calc2-title">Total cost</div>
         <div className="calc2-pair">
-          <div className="calc2-cost"><span>Store</span><b className="mono big-num">{storeCost.partial ? "≥ " : ""}{fmt(storeCost.t)}</b></div>
-          <div className="calc2-cost"><span>Keys</span><b className="mono big-num">{keyCost.partial ? "≥ " : ""}{fmt(keyCost.t)}</b></div>
+          <div className="calc2-cost"><span>Store</span><b className="mono big-num">{storeCost.partial ? "≥ " : ""}{fmt(storeCost.t)}</b><span className="hint">one level at a time</span></div>
+          <div className="calc2-cost"><span>Keys · big jumps</span><b className="mono big-num">{keyCost.partial ? "≥ " : ""}{fmt(keyCost.t)}</b><span className="hint">one key per app</span></div>
         </div>
-        {anyKey && <p className="hint">Keys total uses the store price for things that can't be downloaded. Your Keygen must be at least {maxKeygen} for these keys.</p>}
+        {anyKey && (
+          <div className="calc2-cost calc2-wide">
+            <span>Keys · one level at a time</span>
+            <b className="mono big-num">{singleCost.partial ? "≥ " : ""}{fmt(singleCost.t)}</b>
+            <span className="hint">Same XP as the store (left side of Ending level), for a fraction of the price.</span>
+          </div>
+        )}
+        {anyKey && <p className="hint">Key totals use the store price for things that can't be downloaded. Keys need a Keygen level at least as high as the level they reach: up to {maxKeygen} here{keygenEnd !== null && keygenEnd >= maxKeygen ? " (your Keygen box covers it)" : ". Add Keygen above to include what raising it costs"}.</p>}
         {!used.length && <p className="hint">Enter a starting and ending level above to see totals.</p>}
       </section>
 
@@ -169,7 +184,7 @@ export default function Calculator() {
             {endB && <span className="hint mono">{bigJumpXp.partial ? "≥ " : ""}+{fmt(bigJumpXp.t)} XP · {fmt(endB.exp)} / {fmt(endB.required)}</span>}
           </div>
         </div>
-        <p className="hint">Single-level keys give the same XP as the store, so "one level at a time" covers both. "Large key jumps" assumes a jump only gives the XP of the level it lands on (still being tested).</p>
+        <p className="hint">"One level at a time" is the XP from the store or from single-level keys (they give the same). "Large key jumps" assumes a jump only gives the XP of the level it lands on (still being tested).</p>
       </section>
 
       {(used.length > 0 || lvl || xp) && (
