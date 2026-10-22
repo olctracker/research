@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "test": "tsx --test tests/domain.test.ts tests/paste.test.ts",
+    "test": "tsx --test tests/domain.test.ts tests/paste.test.ts tests/calc.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

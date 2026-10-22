@@ -434,3 +434,25 @@ td.c-off { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transp
 .formula-predict { padding: 10px 12px; border-radius: 12px; margin-bottom: 10px; background: color-mix(in srgb, var(--good) 10%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--good) 40%, transparent); }
 .formula-predict.none { background: var(--surface-2); border-color: var(--line); }
 .option.formula-pick { border-color: color-mix(in srgb, var(--good) 60%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--good) 35%, transparent); }
+
+/* ---------- Calculator ---------- */
+.calc-summary { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); box-shadow: var(--shadow); }
+.calc-sum-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.calc-sum-grid .stat { font-size: 1.15rem; }
+.calc-wallet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.calc-wallet .input { width: 130px; min-height: 36px; padding: 4px 10px; }
+.calc-row { list-style: none; padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.calc-row:first-child { border-top: 0; }
+.calc-head { display: flex; align-items: center; gap: 12px; }
+.calc-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.calc-opt { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.calc-opt.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.calc-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.calc-opt-title { font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.calc-opt-cost { font-size: 1.05rem; font-weight: 700; }
+.calc-bar { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 20; display: flex; justify-content: space-between; gap: 10px;
+  padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--accent); box-shadow: var(--shadow); font-size: 0.95rem; }
+@media (min-width: 960px) { .calc-bar { left: 324px; } }
+.calc-bar-space { height: 72px; }
