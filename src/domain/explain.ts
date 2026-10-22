@@ -30,6 +30,8 @@ export function explain(r: Row): Explanation {
   }
   if ("cost" in r) {
     const v = r.cost;
+    // A list price before the 15% discount isn't what the game charges, so the formula doesn't apply to it.
+    if (r.priceBasis === "before_discount") return { matches: null, formula: null, lookalike: null };
     if (r.method === "download" && r.costType === "combined") {
       const f = formulaKeyPrice(r.upgradeId, r.fromLevel, r.toLevel);
       let lookalike: string | null = null;
