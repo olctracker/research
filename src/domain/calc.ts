@@ -28,17 +28,23 @@ export interface PlanRow {
   singleKeys: Option | null;
 }
 
+/** One-time items as measured in game (Oct 2026): used when no report is loaded. Each gives 20% of its price as XP. */
+const ONE_TIME_KNOWN: Record<string, { price: number; xp: number }> = {
+  notepad: { price: 5000, xp: 1000 },
+  message_encryptor: { price: 9000, xp: 1800 }
+};
+
 /** Price of one store level: what players saw, otherwise the formula / hardware table. */
 function storeLevelPrice(kb: Knowledge, id: string, level: number): number | null {
   const e = getEntry(id);
-  if (e.kind === "one_time") return kb.oneTimeItemPrice(id).value;
+  if (e.kind === "one_time") return kb.oneTimeItemPrice(id).value ?? ONE_TIME_KNOWN[id]?.price ?? null;
   return kb.storeLevelPrice(id, level).value ?? formulaStorePrice(id, level);
 }
 
 /** XP of one store level: what players saw, otherwise the formula. */
 function storeLevelXp(kb: Knowledge, id: string, level: number): number | null {
   const e = getEntry(id);
-  if (e.kind === "one_time") return kb.oneTimeItemExp(id).value;
+  if (e.kind === "one_time") return kb.oneTimeItemExp(id).value ?? ONE_TIME_KNOWN[id]?.xp ?? null;
   const l = kb.storeLevelExp(id, level);
   if (l.value !== null) return l.value;
   if (l.predicted != null) return l.predicted;

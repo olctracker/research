@@ -479,3 +479,30 @@ td.c-off { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transp
 .jump-row { padding-top: 10px; border-top: 1px solid var(--line); margin-top: 6px; }
 .formula-sheet { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 0.8rem; line-height: 1.45; margin: 0;
   padding: 12px; border-radius: 12px; background: var(--surface-2); user-select: text; -webkit-user-select: text; }
+/* Character Builder */
+.bld-toolbar { display: flex; justify-content: space-between; gap: 8px; }
+.bld-layout { display: flex; flex-direction: column; gap: 12px; }
+.bld-main { display: flex; flex-direction: column; gap: 10px; }
+.bld-pair3 { display: grid; grid-template-columns: 0.8fr 1fr 1.2fr; gap: 8px; }
+.bld-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bld-field > span, .bld-costs span { font-size: 0.68rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.bld-field .input { text-align: center; padding: 6px 4px; min-height: 36px; font-size: 1rem; width: 100%; min-width: 0; }
+.bld-result { padding: 8px 10px; border-radius: 12px; background: var(--surface-2); display: flex; flex-direction: column; gap: 2px; }
+.bld-result-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
+.bld-result-top b { font-size: 1.15rem; color: var(--accent); white-space: nowrap; }
+.bld-result .hint { overflow-wrap: anywhere; }
+.bld-group { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 2px 2px 6px; }
+.bld-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .bld-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.bld-card { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bld-card.on { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.bld-name { font-weight: 700; font-size: 0.9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bld-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bld-costs > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: center; }
+.bld-costs b { font-size: 0.85rem; overflow-wrap: anywhere; }
+.bld-costs .hint { font-size: 0.7rem; font-weight: 500; }
+.bld-totals { gap: 10px; }
+.bld-totals > div { padding: 8px; border-radius: 10px; background: var(--surface-2); }
+.bld-totals b { font-size: 1.05rem; }
+.bld-field select.input { font-size: 0.85rem; padding: 6px 2px; text-align: left; }
