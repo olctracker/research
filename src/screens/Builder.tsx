@@ -4,6 +4,7 @@ import { BOTNET_TIERS, getEntry } from "../domain/catalog";
 import { charTarget } from "../domain/formulas";
 import { useApp } from "../state";
 import { fmt, parseWhole } from "../ui/components";
+import { drawBuildImage, type BuildImageData } from "../ui/buildImage";
 
 // Character Builder: set a current and end level for every upgrade and see the cost and where the account lands.
 const SAVE_KEY = "hedb.builder";
@@ -52,6 +53,9 @@ export default function Builder() {
   const [xp, setXp] = useState(saved.xp);
   const [reboot, setReboot] = useState(saved.reboot || String(player?.reboots ?? 0));
   const [note, setNote] = useState<string | null>(null);
+  const [image, setImage] = useState<{ url: string; file: File } | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  useEffect(() => () => { if (image) URL.revokeObjectURL(image.url); }, [image]);
 
   useEffect(() => {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ cur, end, lvl, xp, reboot })); } catch { /* ignore */ }
@@ -102,6 +106,65 @@ export default function Builder() {
     if (!confirm("Reset every current level to zero?\n\nDevice and Network go to 1 and Botnet to Free, the lowest they can be.")) return;
     setCur(Object.fromEntries(BUILDER_IDS.map((id) => [id, String(floorLevel(id))])));
     setNote("Current levels reset.");
+  }
+
+  /** How a level reads in the picture: Botnet tiers by name, one-time items Yes/No. */
+  const levelText = (id: string, v: number) =>
+    id === "botnet" ? BOTNET_TIERS[v - 1]?.name ?? String(v) : getEntry(id).kind === "one_time" ? (v ? "Yes" : "No") : String(v);
+
+  async function makeImage() {
+    setImageBusy(true);
+    try {
+      const data: BuildImageData = {
+        title: "Character Build",
+        subtitle: `${player?.alias ?? ""}${player?.alias ? " · " : ""}R${reboot} · start LVL ${level}${xpOk ? ` · ${fmt(startXp)} / ${fmt(target!)}` : ""}`,
+        groups: BUILDER_GROUPS.map((g) => ({
+          title: g.title,
+          cards: g.ids.map((id) => {
+            const l = levels[id], row = rowOf(id), e = getEntry(id);
+            return {
+              name: e.name,
+              from: levelText(id, l.from),
+              to: levelText(id, l.to),
+              changed: !!row,
+              store: row?.store.cost != null ? fmt(row.store.cost) : "?",
+              key: !e.download ? "store only" : row?.key?.cost != null ? fmt(row.key.cost) : "?"
+            };
+          })
+        })),
+        results: [
+          { label: "One level at a time", value: oneAtATime ? `LVL ${oneAtATime.level}` : "—", line: `Store ${money(r.store)} · keys ${money(r.singleKeys)} · +${fmt(r.store.xp)} XP` },
+          { label: "One Keygen jump", value: jump ? `LVL ${jump.level}` : "—", line: `${money(r.jump)} Crypto · +${fmt(r.jump.xp)} XP` },
+          { label: "Mix: 2–3 level jumps", value: m2 && m3 ? `≈ ${mixText}` : "—", line: `${mixCost} Crypto · estimate` }
+        ],
+        totals: [
+          { label: "Store cost", value: money(r.store) },
+          { label: "Keygen cost (one jump)", value: money(r.jump) },
+          { label: "XP one level at a time", value: `+${fmt(r.store.xp)}` },
+          { label: "XP one Keygen jump", value: `+${fmt(r.jump.xp)}` }
+        ],
+        footer: `HEDB Character Builder · ${new Date().toLocaleDateString()}`
+      };
+      const blob = await drawBuildImage(data);
+      const file = new File([blob], `character-build-${new Date().toISOString().slice(0, 10)}.png`, { type: "image/png" });
+      setImage({ url: URL.createObjectURL(blob), file });
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function shareImage() {
+    if (!image) return;
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (nav.share && nav.canShare?.({ files: [image.file] })) {
+      try { await nav.share({ files: [image.file], title: "Character Build" }); return; }
+      catch (e) { if (e instanceof Error && e.name === "AbortError") return; }
+    }
+    const a = document.createElement("a");
+    a.href = image.url; a.download = image.file.name;
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   const result = (label: string, at: ReturnType<typeof land>, cost: string, gain: Sum, sub?: string) => (
@@ -191,6 +254,19 @@ export default function Builder() {
               <div><span>XP, one Keygen jump</span><b className="mono">+{fmt(r.jump.xp)}</b></div>
             </div>
             <p className="hint">The Keygen total uses the store price for Device, Network, Botnet, Keygen and one-time items, since keys can't buy those.</p>
+          </section>
+
+          <section className="calc2-box" aria-label="Share this build">
+            <div className="calc2-title">Share this build</div>
+            <p className="hint">Makes one picture of your whole build: every upgrade, where the account lands, and the totals.</p>
+            <button className="btn primary full" onClick={makeImage} disabled={imageBusy}>{imageBusy ? "Making image…" : image ? "Update image" : "Make image"}</button>
+            {image && (
+              <>
+                <img className="bld-shot" src={image.url} alt="Your character build as one picture" />
+                <button className="btn full" onClick={shareImage}>Save or share image</button>
+                <p className="hint">On iPhone you can also press and hold the picture, then tap Save to Photos.</p>
+              </>
+            )}
           </section>
         </div>
       </div>

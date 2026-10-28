@@ -506,3 +506,4 @@ td.c-off { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 55%, transp
 .bld-totals > div { padding: 8px; border-radius: 10px; background: var(--surface-2); }
 .bld-totals b { font-size: 1.05rem; }
 .bld-field select.input { font-size: 0.85rem; padding: 6px 2px; text-align: left; }
+.bld-shot { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
